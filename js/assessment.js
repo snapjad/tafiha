@@ -363,7 +363,8 @@ export function runAssessment(prev = {}, opts = {}) {
     function linkForm(el) {
       el.innerHTML = `
         <h1 class="q-title" style="margin-top:5vh">اربط هالجهاز</h1>
-        <p class="sub">على جهازك التاني: الإعدادات ← أجهزتك ← «اربط جهاز تاني»، واكتب الرمز اللي بيطلعلك هون.</p>
+        <p class="sub">الرمز بيطلع من الجهاز اللي عليه بياناتك: افتح طفّيها عليه، اكبس زر الإعدادات فوق، وبعدين «اربط جهاز تاني».</p>
+        <p class="hint">ما عندك بيانات على أي جهاز لسّا؟ اكبس «رجوع» وابدأ المقابلة هون، وبعدين اربط أجهزتك التانية منه.</p>
         <input class="big-input code-input" dir="ltr" autocomplete="off" autocapitalize="characters" maxlength="9" placeholder="XXXX-XXXX">
         <p class="onb-err" role="alert"></p>
         <div class="onb-actions">
