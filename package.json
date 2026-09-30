@@ -1,0 +1,8 @@
+{
+  "name": "tafiha",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "test": "node tests/numbers.test.mjs && node tests/plan.test.mjs && node tests/report.test.mjs && node tests/merge.test.mjs"
+  }
+}

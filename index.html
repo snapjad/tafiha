@@ -1,0 +1,306 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>طفّيها</title>
+  <meta name="description" content="طفّيها: رفيقك لترك السجاير والفيب والأرجيلة.">
+  <meta name="theme-color" content="#e1261c">
+  <link rel="manifest" href="manifest.webmanifest">
+  <link rel="icon" type="image/png" href="assets/icon-192.png">
+  <link rel="apple-touch-icon" href="assets/apple-touch-icon.png">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-title" content="طفّيها">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Readex+Pro:wght@300..700&display=swap">
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Big+Shoulders+Display:wght@700..900&display=swap">
+  <link rel="preload" as="image" href="assets/cig-body.webp">
+  <link rel="stylesheet" href="css/app.css">
+</head>
+<body>
+  <svg width="0" height="0" style="position:absolute" aria-hidden="true">
+    <symbol id="i-sliders" viewBox="0 0 24 24"><path d="M4 7h9M17 7h3M4 17h3M11 17h9"/><circle cx="15" cy="7" r="2.2"/><circle cx="9" cy="17" r="2.2"/></symbol>
+    <symbol id="i-plus" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></symbol>
+    <symbol id="i-check" viewBox="0 0 24 24"><path d="M5 12.5l4.5 4.5L19 7.5"/></symbol>
+    <symbol id="i-close" viewBox="0 0 24 24"><path d="M6 6l12 12M18 6 6 18"/></symbol>
+    <symbol id="i-arrow" viewBox="0 0 24 24"><path d="M15 6l-6 6 6 6"/></symbol>
+    <symbol id="i-home" viewBox="0 0 24 24"><path d="M4 10.5 12 4l8 6.5V19a1 1 0 0 1-1 1h-4.5v-5.5h-5V20H5a1 1 0 0 1-1-1z"/></symbol>
+    <symbol id="i-plan" viewBox="0 0 24 24"><path d="M7 3.5h7l4 4V20a.5.5 0 0 1-.5.5h-10A.5.5 0 0 1 7 20z"/><path d="M14 3.5V8h4M10 12.5h5M10 16h5"/></symbol>
+    <symbol id="i-body" viewBox="0 0 24 24"><path d="M12 20s-7-4.4-7-10a4 4 0 0 1 7-2.6A4 4 0 0 1 19 10c0 5.6-7 10-7 10z"/><path d="M5.5 12h3l1.5-2.5 2 5 1.5-2.5h5"/></symbol>
+    <symbol id="i-wins" viewBox="0 0 24 24"><path d="M8 4h8v5a4 4 0 0 1-8 0z"/><path d="M8 6H5a3 3 0 0 0 3 4M16 6h3a3 3 0 0 1-3 4M12 13v4M8.5 20h7M10 17h4"/></symbol>
+    <symbol id="i-download" viewBox="0 0 24 24"><path d="M12 4v11M7.5 10.5 12 15l4.5-4.5M5 19.5h14"/></symbol>
+    <symbol id="i-story" viewBox="0 0 24 24"><rect x="6" y="2.5" width="12" height="19" rx="3"/><path d="M12 8.5v6.5M9.3 11.2 12 8.5l2.7 2.7"/></symbol>
+  </svg>
+
+  <div class="app">
+    <header class="top">
+      <div class="brand">
+        <img src="assets/apple-touch-icon.png" alt="" width="36" height="36">
+        <span class="brand-word">طفّيها</span>
+      </div>
+      <p class="greet"><span id="greet">أهلا</span> يا <b id="name"></b></p>
+      <span class="sync-dot" id="syncDot" data-s="off" role="img" aria-label=""></span>
+      <button class="icon-btn" id="openSettings" aria-label="الإعدادات">
+        <svg class="ico"><use href="#i-sliders"/></svg>
+      </button>
+    </header>
+
+    <main id="grid">
+      <!-- ============================================ الرئيسية -->
+      <div class="page is-active" data-page="home" role="tabpanel" aria-label="الرئيسية">
+        <div class="page-grid home-grid">
+          <section class="card hero" style="--i:0" aria-labelledby="heroEyebrow">
+            <p class="eyebrow" id="heroEyebrow">صارلك طافيها</p>
+            <div class="hero-main">
+              <div class="clock" id="clock" aria-live="off">
+                <div class="unit unit-days"><span class="num" data-k="d">0</span><span class="lbl" data-l="d">يوم</span></div>
+                <div class="hms">
+                  <div class="unit"><span class="num" data-k="h">00</span><span class="lbl" data-l="h">ساعة</span></div>
+                  <span class="sep" aria-hidden="true">:</span>
+                  <div class="unit"><span class="num" data-k="m">00</span><span class="lbl" data-l="m">دقيقة</span></div>
+                  <span class="sep" aria-hidden="true">:</span>
+                  <div class="unit"><span class="num" data-k="s">00</span><span class="lbl" data-l="s">ثانية</span></div>
+                </div>
+              </div>
+              <div class="stage" id="stage" data-mode="cig">
+                <canvas id="smoke" aria-hidden="true"></canvas>
+                <div class="shadow"></div>
+                <div class="cig-float">
+                  <div class="cig">
+                    <img class="cig-body" src="assets/cig-body.webp" alt="" width="1600" height="400">
+                    <div class="cig-tip">
+                      <img src="assets/cig-tip-out.webp" alt="" width="1600" height="400">
+                      <img class="t-idle" src="assets/cig-tip-idle.webp" alt="" width="1600" height="400">
+                      <img class="t-hot" src="assets/cig-tip-hot.webp" alt="" width="1600" height="400">
+                      <i class="glow"></i>
+                    </div>
+                  </div>
+                </div>
+                <img class="vape-obj" src="assets/hero-vape.webp" alt="" width="1600" height="800">
+              </div>
+            </div>
+            <div class="next" id="next">
+              <div class="next-row"><b id="nextName"></b><span id="nextLeft"></span></div>
+              <div class="bar"><i id="nextBar"></i></div>
+            </div>
+          </section>
+
+          <section class="card prep" style="--i:1" id="prepCard" aria-labelledby="prepTitle" hidden>
+            <div class="card-head">
+              <h2 class="card-title" id="prepTitle">تجهّز ليوم الترك</h2>
+              <span class="spacer"></span>
+              <span class="badge" id="prepCount"></span>
+            </div>
+            <div class="checks" id="prepList"></div>
+          </section>
+
+          <div class="tiles" id="stats">
+            <section class="card tile" style="--i:2">
+              <img class="tile-ico" src="assets/icons/coins.webp" alt="" width="400" height="400">
+              <div class="tile-n"><span class="n" id="stMoney">0</span><small>د.أ</small></div>
+              <p class="tile-k">وفّرت</p>
+            </section>
+            <section class="card tile" style="--i:3">
+              <img class="tile-ico" src="assets/icons/pack.webp" alt="" width="400" height="400">
+              <div class="tile-n"><span class="n" id="stUnits">0</span></div>
+              <p class="tile-k" id="stUnitsK"></p>
+            </section>
+            <section class="card tile" style="--i:4">
+              <img class="tile-ico" src="assets/icons/drop.webp" alt="" width="400" height="400">
+              <div class="tile-n"><span class="n" id="stBeaten">0</span></div>
+              <p class="tile-k">رغبة طفّيتها</p>
+            </section>
+          </div>
+
+          <section class="card today" style="--i:5" id="todayCard" hidden>
+            <img class="today-ico" id="todayIco" src="assets/icons/gum.webp" alt="" width="400" height="400">
+            <div class="today-txt">
+              <p class="today-k" id="todayK"></p>
+              <p class="today-main" id="todayMain"></p>
+            </div>
+            <button class="btn btn-ink today-btn" id="todayBtn"></button>
+          </section>
+        </div>
+      </div>
+
+      <!-- ============================================ خطتي -->
+      <div class="page" data-page="plan" role="tabpanel" aria-label="خطتي">
+        <h1 class="page-title">خطتي</h1>
+        <div class="page-grid">
+          <section class="card plan" style="--i:0" id="planCard" aria-labelledby="planTitle">
+            <div class="plan-row">
+              <div class="plan-ico" aria-hidden="true"><svg class="ico"><use href="#i-plan"/></svg></div>
+              <div class="plan-txt">
+                <h2 class="card-title" id="planTitle">تقريرك وخطتك</h2>
+                <p class="card-sub" id="planSub"></p>
+              </div>
+            </div>
+            <div class="plan-actions">
+              <button class="btn btn-ink" id="planBtn">افتح التقرير</button>
+              <button class="btn btn-soft" id="planPdfBtn"><svg class="ico" aria-hidden="true"><use href="#i-download"/></svg>نزّل PDF</button>
+            </div>
+          </section>
+
+          <section class="card nrt" style="--i:1" id="nrtCard" aria-labelledby="nrtTitle">
+            <div class="card-head">
+              <img class="head-ico" src="assets/icons/gum.webp" alt="" width="400" height="400">
+              <h2 class="card-title" id="nrtTitle">علكة النيكوتين</h2>
+              <span class="spacer"></span>
+              <span class="badge" id="nrtMg"></span>
+            </div>
+            <div class="nrt-body">
+              <div class="ring" id="nrtRing">
+                <svg viewBox="0 0 124 124" aria-hidden="true">
+                  <circle class="track" cx="62" cy="62" r="52"/>
+                  <circle class="prog" cx="62" cy="62" r="52"/>
+                </svg>
+                <div class="mid"><b id="nrtToday">0</b><span id="nrtOf"></span></div>
+              </div>
+              <div class="nrt-info">
+                <span id="nrtPlan" class="nrt-plan" hidden></span>
+                <span id="nrtLast"></span>
+                <span id="nrtStock"></span>
+                <div class="week-mini" id="nrtWeek" aria-hidden="true"></div>
+              </div>
+            </div>
+            <div class="nrt-actions">
+              <button class="btn btn-ink" id="gumBtn"><svg class="ico" aria-hidden="true"><use href="#i-plus"/></svg>سجّل حبة</button>
+              <button class="btn btn-soft" id="gumPackBtn">اشتريت علبة</button>
+            </div>
+            <details class="howto">
+              <summary>كيف تستعملها صح</summary>
+              <ol>
+                <li>امضغ لحد ما تحس بطعم لاذع.</li>
+                <li>حطها بين خدّك ولثّتك، وارجع امضغ كل شوي.</li>
+                <li>الحبة الوحدة حوالي نص ساعة.</li>
+                <li>لا قهوة ولا عصير قبلها وخلالها بربع ساعة.</li>
+              </ol>
+            </details>
+          </section>
+
+          <section class="card patch" style="--i:2" id="patchCard" aria-labelledby="patchTitle" hidden>
+            <div class="card-head">
+              <img class="head-ico" src="assets/icons/patch.webp" alt="" width="400" height="400">
+              <h2 class="card-title" id="patchTitle">لزقة النيكوتين</h2>
+              <span class="spacer"></span>
+              <span class="badge" id="patchBadge"></span>
+            </div>
+            <div class="patch-steps" id="patchSteps"></div>
+            <p class="card-sub" id="patchNote"></p>
+            <div class="nrt-actions">
+              <button class="btn btn-ink" id="patchBtn"></button>
+              <button class="btn btn-soft" id="patchPackBtn">اشتريت علبة</button>
+            </div>
+            <details class="howto">
+              <summary>كيف تحطها صح</summary>
+              <ol>
+                <li>الصبح، على جلد نضيف وبلا شعر: الذراع أو الكتف أو الصدر.</li>
+                <li>غيّر مكانها كل يوم.</li>
+                <li>إذا أثّرت على نومك، شيلها قبل ما تنام.</li>
+              </ol>
+            </details>
+          </section>
+        </div>
+      </div>
+
+      <!-- ============================================ جسمي -->
+      <div class="page" data-page="body" role="tabpanel" aria-label="جسمي">
+        <h1 class="page-title">جسمي</h1>
+        <div class="page-grid">
+          <section class="card body-hero" style="--i:0">
+            <img class="body-ico" src="assets/icons/heart.webp" alt="" width="400" height="400">
+            <div>
+              <p class="body-k">المحطة الجاية</p>
+              <p class="body-next" id="bodyNext"></p>
+              <p class="body-left" id="bodyLeft"></p>
+            </div>
+            <div class="body-count"><b id="bodyDone">0</b><span id="bodyTotal"></span></div>
+          </section>
+          <section class="card health" style="--i:1" aria-label="المحطات الصحية">
+            <ol class="miles" id="miles"></ol>
+            <p class="fine">معلومات عامة من منظمة الصحة العالمية وهيئة الصحة البريطانية (NHS).</p>
+          </section>
+        </div>
+      </div>
+
+      <!-- ============================================ إنجازاتي -->
+      <div class="page" data-page="wins" role="tabpanel" aria-label="إنجازاتي">
+        <h1 class="page-title">إنجازاتي</h1>
+        <div class="page-grid">
+          <section class="card cravings" style="--i:0" aria-labelledby="cravTitle">
+            <div class="card-head">
+              <img class="head-ico" src="assets/icons/drop.webp" alt="" width="400" height="400">
+              <h2 class="card-title" id="cravTitle">رغباتك</h2>
+              <span class="spacer"></span>
+              <span class="badge">آخر 7 أيام</span>
+            </div>
+            <div id="cravBody"></div>
+          </section>
+
+          <section class="card goal" style="--i:1" aria-labelledby="goalTitle">
+            <div class="card-head">
+              <img class="head-ico" src="assets/icons/target.webp" alt="" width="400" height="400">
+              <h2 class="card-title" id="goalTitle">هدفك</h2>
+            </div>
+            <div id="goalBody"></div>
+          </section>
+
+          <section class="card guardian" style="--i:2" aria-labelledby="guardTitle">
+            <div class="card-head">
+              <img class="head-ico" src="assets/icons/shield.webp" alt="" width="400" height="400">
+              <h2 class="card-title" id="guardTitle">حارس</h2>
+              <span class="spacer"></span>
+              <span class="badge" id="guardBadge"></span>
+            </div>
+            <div class="bar guard-bar"><i id="guardBar"></i></div>
+            <p class="card-sub" id="guardTxt"></p>
+          </section>
+
+          <section class="card sharecard" style="--i:3" aria-labelledby="shareTitle">
+            <div class="share">
+              <div class="story-mini" aria-hidden="true"><b id="storyDays">0</b><span id="storyLbl">يوم</span><small>طفّيها</small></div>
+              <div>
+                <h2 class="card-title" id="shareTitle">شارك إنجازك</h2>
+                <div class="share-actions">
+                  <button class="btn btn-red" id="shareBtn"><svg class="ico" aria-hidden="true"><use href="#i-story"/></svg>ستوري</button>
+                  <button class="btn btn-line" id="inviteBtn">ادعُ صاحبك</button>
+                </div>
+              </div>
+            </div>
+          </section>
+
+          <section class="card slip" style="--i:4">
+            <p><b>زلّيت؟</b> عادي. سجّلها وكمّل.<span class="slip-note" id="slipNote" hidden></span></p>
+            <button class="btn btn-soft" id="slipBtn">سجّل زلّة</button>
+          </section>
+        </div>
+      </div>
+    </main>
+  </div>
+
+  <!-- tab bar with the craving button in the middle -->
+  <nav class="tabbar" aria-label="الأقسام">
+    <button class="tab is-active" data-tab="home" aria-current="page"><svg class="ico"><use href="#i-home"/></svg><span>الرئيسية</span></button>
+    <button class="tab" data-tab="plan"><svg class="ico"><use href="#i-plan"/></svg><span>خطتي</span></button>
+    <button class="tab-sos" id="cravingBtn" aria-label="عندي رغبة"><span class="sos-core" aria-hidden="true"></span><span class="sos-lbl">عندي رغبة</span></button>
+    <button class="tab" data-tab="body"><svg class="ico"><use href="#i-body"/></svg><span>جسمي</span></button>
+    <button class="tab" data-tab="wins"><svg class="ico"><use href="#i-wins"/></svg><span>إنجازاتي</span></button>
+  </nav>
+
+  <!-- craving: rendered by js/craving.js -->
+  <div class="craving" id="craving" role="dialog" aria-modal="true" aria-label="عندي رغبة" hidden>
+    <div class="cv-top">
+      <button class="cv-close" id="cvClose" aria-label="سكّر"><svg class="ico"><use href="#i-close"/></svg></button>
+      <div class="cv-dots" id="cvDots" aria-hidden="true"></div>
+    </div>
+    <div class="cv-body" id="cvBody"></div>
+  </div>
+
+  <div class="backdrop" id="backdrop" hidden></div>
+  <div class="sheet" id="sheet" role="dialog" aria-modal="true" hidden></div>
+  <div class="toast" id="toast" role="status"><span id="toastMsg"></span><button id="toastAct" hidden></button></div>
+
+  <script type="module" src="js/app.js"></script>
+</body>
+</html>
