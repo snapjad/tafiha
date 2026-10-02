@@ -1,5 +1,6 @@
 // طفّيها — the personal report and quit plan, shown after the interview and from the dashboard.
 import { buildReport, patchStepFor, gumStageFor, WITHDRAWAL, REASONS, APPROACHES, targetText } from './plan.js';
+import { assertAssessment } from './security.js';
 
 const esc = (v) => String(v ?? '').replace(/[&<>"']/g, (c) => `&#${c.charCodeAt(0)};`);
 const money = (v) => v.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
@@ -62,6 +63,7 @@ const LEVEL_TEXT = [
 ];
 
 export function reportHTML(a) {
+  assertAssessment(a);
   const r = buildReport(a);
   const tx = r.tx;
   const products = a.products || [];
@@ -124,12 +126,12 @@ export function reportHTML(a) {
       txBody += `<h4>الاستعمال الصح</h4><ul class="tips">
         ${tx.form !== 'gum' ? '<li>حط اللزقة الصبح على جلد نضيف وناشف وبلا شعر: فوق الذراع أو الكتف أو الصدر، وغيّر مكانها كل يوم.</li><li>إذا صار عندك أحلام مزعجة أو أرق مع لزقة الـ 24 ساعة، شيلها قبل النوم.</li>' : ''}
         ${tx.form !== 'patch' ? '<li>العلكة مش علكة عادية: امضغ لحد ما تحس بطعم لاذع، حطها بين خدّك ولثّتك، وكرّر حوالي نص ساعة.</li><li>لا قهوة ولا عصير ولا غازي قبلها وخلالها بربع ساعة.</li>' : ''}
-        <li>${r.future ? 'اشتري العلاج قبل يوم الترك، وبلّش فيه من أول يوم.' : 'خلّي العلاج معك دايماً: بالبيت وبالشغل وبالسيارة.'}</li>
+        <li>${r.future ? 'اشتري العلاج قبل يوم الإقلاع، وبلّش فيه من أول يوم.' : 'خلّي العلاج معك دايماً: بالبيت وبالشغل وبالسيارة.'}</li>
         <li>كمّل الخطة لآخرها. أكتر غلطة إن الناس بيوقفوا العلاج بكير.</li>
       </ul>`;
     }
     if (tx.notes.length) txBody += `<ul class="notes">${tx.notes.map((n) => `<li>${n}</li>`).join('')}</ul>`;
-    if (tx.vapeTaper) txBody += '<p class="small">بدون علاج بديل، بتقدر تنزّل تركيز النيكوتين بالفيب تدريجياً كل أسبوع لأسبوعين (مثلاً 20 ← 12 ← 6 ← 3 ← 0) وبعدين توقف.</p>';
+    if (tx.vapeTaper) txBody += '<p class="small">تخفيف الفيب ممكن يكون بتقليل التركيز أو إطالة الوقت بين مرات الاستخدام، حسب قدرتك وأعراض الانسحاب. ما في جدول واحد مناسب للجميع؛ إذا زاد استخدامك بعد تخفيض التركيز، ممكن تكون خفّضته بسرعة. ناقش الخطة مع مختص، وتجنّب الرجوع للسجائر.</p>';
     txBody += '<p class="evidence">العلاج البديل بيرفع فرصة النجاح بحوالي 50–60%، والجمع بين لزقة وعلكة أقوى من نوع واحد، والدعم فوق العلاج بيزيدها كمان (مراجعات كوكرين).</p>';
   }
   if (r.dep.level >= 2 || a.attempts === '3+') {
@@ -143,9 +145,10 @@ export function reportHTML(a) {
     return `<div><span>${s.label}</span><b>${what}</b>${s.nic != null ? `<small>ليكويد ${s.nic} ملغ/مل</small>` : ''}</div>`;
   }).join('');
   const approachSec = `<section class="rp-sec">
-    <h3>طريقتك للترك: ${ap.t}</h3>
-    <p class="rp-lead">${ap.d}</p>
-    ${schedRows ? `<div class="sched">${schedRows}<div class="quit"><span>يوم الترك</span><b>${dateAr(r.quitAt)}</b></div></div>` : ''}
+    <h3>طريقتك للترك: ${r.reviewReason ? 'راجع موعد الإقلاع' : ap.t}</h3>
+    <p class="rp-lead">${r.reviewReason || ap.d}</p>
+    <p class="small">يوم الإقلاع هو يوم وقف التدخين أو الفيب، مش نهاية استخدام البدائل. المتابعة والعلاج ممكن يستمروا بعده حسب النشرة وتوجيه المختص؛ مش مطلوب تنتظر نهاية العلاج حتى توقف.</p>
+    ${schedRows ? `<div class="sched">${schedRows}<div class="quit"><span>يوم الإقلاع</span><b>${dateAr(r.quitAt)}</b></div></div>` : ''}
     ${r.approach !== 'abrupt' ? '<p class="small">خلال التخفيف سجّل كل وحدة بالتطبيق، وأجّل أول وحدة الصبح، ولا تدخّن نصها وتحسبها أقل. وإذا قدرت توقف قبل الموعد، وقف.</p>' : ''}
     ${r.meds.length ? `<h4>إيمتى تبلّش العلاج</h4><ul class="tips">${r.meds.map((m) => `<li>${m}</li>`).join('')}</ul>` : ''}
   </section>`;
@@ -154,11 +157,11 @@ export function reportHTML(a) {
   const top = r.triggers[0]?.label;
   const phases = [];
   if (r.future) {
-    phases.push({ t: 'قبل يوم الترك', sub: dateAr(r.quitAt), items: [
+    phases.push({ t: 'قبل يوم الإقلاع', sub: dateAr(r.quitAt), items: [
       tx.form !== 'none' && !blocked ? 'اشتري العلاج البديل وخلّيه جاهز.' : '',
       'خبّر 2–3 ناس قريبين منك إنك رح تترك، واطلب منهم ما يدخّنوا جنبك.',
       'ليلة الترك: شيل كل السجاير والولاعات والطفّايات والفيب من البيت والسيارة.',
-      'اقرأ خطتك للحظات الصعبة تحت، وقرر شو رح تعمل أول ساعة بيوم الترك.',
+      'اقرأ خطتك للحظات الصعبة تحت، وقرر شو رح تعمل أول ساعة بيوم الإقلاع.',
       r.approach !== 'abrupt' ? 'امشي على جدول التخفيف، وسجّل كل وحدة بالتطبيق.' : '',
     ] });
   }
@@ -168,7 +171,7 @@ export function reportHTML(a) {
   phases.push({ t: 'الأسبوع 3–4', sub: 'المواقف الاجتماعية', items: ['الرغبات بتقل، بس السهرات والطلعات بتضل صعبة. جهّز حالك قبلها.', ...nl(3, 4)] });
   phases.push({ t: 'الأسبوع 5–8', sub: 'الثقة الزايدة', items: ['«وحدة بس» هي أشهر سبب للرجوع. لا تجرّبها.', ...nl(5, 8)] });
   phases.push({ t: 'الأسبوع 9–12', sub: 'إنهاء العلاج', items: [tx.form !== 'none' && !blocked ? 'كمّل العلاج لآخره ونزّل تدريجياً، لا توقفه فجأة.' : 'خلّي خطتك للحظات الصعبة جاهزة دايماً.', ...nl(9, 12)] });
-  phases.push({ t: 'بعد 3 شهور', sub: 'الحفاظ', items: ['كافئ حالك من المصاري اللي وفّرتها.', 'إذا زلّيت، سجّلها وارجع فوراً. الزلّة مش فشل.', 'بعد 30 يوم بتصير حارس وبتقدر تفزع لغيرك.'] });
+  phases.push({ t: 'بعد 3 شهور', sub: 'الحفاظ', items: ['كافئ حالك من المصاري اللي وفّرتها.', 'إذا زلّيت، سجّلها وارجع لخطتك فوراً. الزلّة عادية، والعدّاد بيكمّل.', 'بعد 30 يوم بتصير حارس وبتقدر تفزع لغيرك.'] });
 
   // ---- withdrawal (what they felt before first)
   const felt = r.withdrawal.length ? r.withdrawal : WITHDRAWAL.filter((w) => ['irritable', 'sleep', 'appetite', 'cravings'].includes(w.id));
@@ -199,7 +202,7 @@ export function reportHTML(a) {
     <div class="rp-tiles">
       <div><span>الاعتماد</span><b>${levelLabel}</b></div>
       <div><span>العلاج</span><b>${form.t}</b></div>
-      <div><span>${r.future ? 'يوم الترك' : 'تركت'}</span><b>${dateAr(r.quitAt)}</b></div>
+      <div><span>${r.future ? 'يوم الإقلاع' : 'تركت'}</span><b>${dateAr(r.quitAt)}</b></div>
     </div>
   </header>
 
@@ -257,7 +260,7 @@ export function reportHTML(a) {
       <div><span>قديش واثق</span><div class="bar"><i style="--p:${r.confidence / 10}"></i></div><b>${r.confidence}/10</b></div>
     </div>
     <p class="rp-lead">${r.motivation}</p>
-    ${(a.reasons || []).length ? `<div class="chips-static">${a.reasons.map((x) => `<span>${REASONS[x] || x}</span>`).join('')}</div>` : ''}
+    ${(a.reasons || []).length ? `<div class="chips-static">${a.reasons.map((x) => `<span>${esc(Object.hasOwn(REASONS, x) ? REASONS[x] : x)}</span>`).join('')}</div>` : ''}
   </section>
 
   ${r.safe.notes.length ? `<section class="rp-sec"><h3>ملاحظات صحية</h3><ul class="notes">${r.safe.notes.map((n) => `<li>${n}</li>`).join('')}</ul></section>` : ''}
@@ -280,8 +283,8 @@ export function reportHTML(a) {
 // Each block of the report is rendered to an image at a fixed width, then laid
 // out on A4 pages so a section only splits when it is taller than a page.
 const LIBS = {
-  html2canvas: 'https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js',
-  jspdf: 'https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js',
+  html2canvas: new URL('./vendor/html2canvas.js', import.meta.url).href,
+  jspdf: new URL('./vendor/jspdf.js', import.meta.url).href,
 };
 
 function loadScript(src) {
@@ -369,7 +372,7 @@ export function openReport(a, { first = false } = {}) {
     root.setAttribute('aria-label', 'تقريرك وخطتك');
     root.innerHTML = `
       <div class="rp-bar">
-        <button class="btn btn-soft rp-pdf" type="button">نزّل PDF</button>
+        <button class="btn btn-soft rp-pdf" type="button">نزّل خطتك</button>
         <button class="btn ${first ? 'btn-red' : 'btn-ink'} rp-done" type="button">${first ? 'ابدأ الخطة' : 'سكّر'}</button>
       </div>
       <article class="rp-doc">${reportHTML(a)}</article>`;
@@ -395,7 +398,7 @@ export function openReport(a, { first = false } = {}) {
       } catch (e) {
         pdfBtn.textContent = 'ما زبط. تأكد من النت وجرّب كمان مرة';
       }
-      setTimeout(() => { pdfBtn.disabled = false; pdfBtn.textContent = 'نزّل PDF'; }, 3000);
+      setTimeout(() => { pdfBtn.disabled = false; pdfBtn.textContent = 'نزّل خطتك'; }, 3000);
     };
     root.addEventListener('keydown', (ev) => { if (ev.key === 'Escape' && !first) close(); });
     setTimeout(() => root.querySelector('.rp-done').focus({ preventScroll: true }), 60);

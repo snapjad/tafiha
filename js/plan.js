@@ -198,8 +198,8 @@ export const APPROACHES = {
     days: 14,
   },
   'gradual-long': {
-    t: 'تخفيف على مهل خلال 12 أسبوع',
-    d: 'بتنزّل 50% بأول 4 أسابيع، و50% كمان بالـ 4 اللي بعدها، وبتكمّل تنزيل لحد ما توقف بنهاية الأسبوع 12. نفس جدول الترك التدريجي بنشرة الفارينكلين الرسمية.',
+    t: 'مسار الفارينكلين التدريجي بإشراف الطبيب',
+    d: 'خيار خاص لتدخين السجائر مع الفارينكلين الموصوف: تخفيض للنصف خلال 4 أسابيع، ولربع البداية خلال 8 أسابيع، والإقلاع بحلول الأسبوع 12. مش مدة إلزامية ولا جدول عام للفيب. التفاصيل الأسبوعية أهداف تنظيمية وليست وصفة طبية.',
     days: 84,
   },
 };
@@ -218,9 +218,24 @@ const NIC_LADDER = [50, 35, 20, 12, 6, 3, 0];
 export function chooseApproach(a) {
   if (a.quitMode !== 'future') return 'abrupt';
   if (a.rx === 'cytisine') return 'abrupt'; // quit day must fall within the first 5 days
-  if (a.approach && a.approach !== 'advise') return a.approach;
-  // not feeling able to stop in one go → cut down to quit; otherwise the standard abrupt plan
-  return Number(a.confidence ?? 5) <= 3 ? 'gradual-long' : 'abrupt';
+  if (a.approach === 'gradual-long' && allowsLongPlan(a)) return 'gradual-long';
+  if (a.approach === 'gradual-short' && cigaretteOnly(a)) return 'gradual-short';
+  // Confidence determines support needs, not a medically justified delay.
+  return 'abrupt';
+}
+
+const cigaretteOnly = (a) => a.products?.length === 1 && a.products[0] === 'cig';
+export const allowsLongPlan = (a) => cigaretteOnly(a) && a.rx === 'varenicline';
+
+export function planReviewReason(a, now = Date.now()) {
+  if (a.quitMode !== 'future') return '';
+  const unsupported = (a.approach === 'gradual-long' && !allowsLongPlan(a))
+    || (a.approach === 'gradual-short' && !cigaretteOnly(a));
+  const oldAuto = (!a.approach || a.approach === 'advise')
+    && Number(a.confidence ?? 5) <= 3 && a.quitAt > now
+    && a.quitAt - (a.assessedAt || now) > 42 * 86400000;
+  return unsupported || oldAuto
+    ? 'موعد خطتك القديمة بحاجة مراجعة: مدة 12 أسبوع مش توصية عامة، وجدول السجائر ما بنعمّمه على الفيب. تاريخك محفوظ بدون تغيير؛ أعد المقابلة لتأكيد وضعك ويوم الإقلاع.' : '';
 }
 
 const startOfDay = (t) => { const d = new Date(t); d.setHours(0, 0, 0, 0); return d.getTime(); };
@@ -248,6 +263,7 @@ function nicStep(start, notch) {
 
 // weekly (or daily) allowances on the way to the quit day
 export function reductionSchedule(a, approach, startAt) {
+  if (!cigaretteOnly(a) || (approach === 'gradual-long' && !allowsLongPlan(a))) return [];
   const steps = STEPS[approach];
   if (!steps) return [];
   const bases = baselines(a);
@@ -287,20 +303,21 @@ function medicines(a, approach, tx, blocked, future) {
   if (rx === 'varenicline') {
     out.push(approach === 'gradual-long'
       ? 'الفارينكلين: بتبلّش فيه من أول يوم بالتخفيف، وبتكمّل 12 أسبوع بعد ما توقف (المجموع 24 أسبوع). الجرعات حسب وصفة الدكتور.'
-      : 'الفارينكلين: بتبلّش فيه قبل يوم الترك بأسبوع، فيصير يوم الترك هو اليوم الثامن من الدواء. الكورس 12 أسبوع، والجرعات حسب وصفة الدكتور.');
+      : 'الفارينكلين: بتبلّش فيه قبل يوم الإقلاع بأسبوع، فيصير يوم الإقلاع هو اليوم الثامن من الدواء. الكورس 12 أسبوع، والجرعات حسب وصفة الدكتور.');
   }
-  if (rx === 'cytisine') out.push('السيتيسين: الكورس 25 يوم، ولازم توقف تدخين بأول 5 أيام منه، فابدأ فيه قبل يوم الترك بـ 4 أيام. الجرعات حسب الوصفة.');
-  if (rx === 'bupropion') out.push('البوبروبيون: بتبلّش فيه قبل يوم الترك بأسبوع لأسبوعين، والكورس 7 لـ 12 أسبوع حسب الوصفة.');
+  if (rx === 'cytisine') out.push('السيتيسين: الكورس 25 يوم، ولازم توقف تدخين بأول 5 أيام منه، فابدأ فيه قبل يوم الإقلاع بـ 4 أيام. الجرعات حسب الوصفة.');
+  if (rx === 'bupropion') out.push('البوبروبيون: بتبلّش فيه قبل يوم الإقلاع بأسبوع لأسبوعين، والكورس 7 لـ 12 أسبوع حسب الوصفة.');
   if (!blocked && (tx.form === 'patch' || tx.form === 'both') && (approach !== 'abrupt' || future)) {
-    out.push('اللزقة: ابدأ فيها قبل يوم الترك بأسبوعين وإنت لسّا عم تدخّن (تحميل مسبق)، وبيوم الترك بتمشي على جدولها. مراجعة كوكرين 2023 لقت إن هالشي بيرفع فرصة النجاح.');
+    out.push('اللزقة: ابدأ فيها قبل يوم الإقلاع بأسبوعين وإنت لسّا عم تدخّن (تحميل مسبق)، وبيوم الإقلاع بتمشي على جدولها. مراجعة كوكرين 2023 لقت إن هالشي بيرفع فرصة النجاح.');
   }
   if (!blocked && approach !== 'abrupt' && (tx.form === 'gum' || tx.form === 'both')) {
-    out.push('العلكة خلال التخفيف: خذ حبة بين السجاير لتطوّل المسافة بينهم، حسب نشرة العلكة، وبيوم الترك بتمشي على جدولها.');
+    out.push('العلكة خلال التخفيف: خذ حبة بين السجاير لتطوّل المسافة بينهم، حسب نشرة العلكة، وبيوم الإقلاع بتمشي على جدولها.');
   }
   return out;
 }
 
 export const SOURCES = [
+  'NHS: How to quit vaping؛ التخفيف حسب الاستجابة، بدون تعميم جدول السجائر',
   'منظمة الصحة العالمية: الإرشادات السريرية لعلاج الإدمان على التبغ عند البالغين (2024)',
   'المعهد الوطني البريطاني للصحة NICE: إرشاد NG209 لعلاج الاعتماد على التبغ',
   'المركز الوطني البريطاني لعلاج التدخين NCSCT: برنامج العلاج القياسي، وإرشاد الإقلاع عن الفيب',
@@ -344,12 +361,13 @@ export function buildReport(a, now = Date.now()) {
   const startAt = a.assessedAt || now;
   const quitAt = approach !== 'abrupt' ? gradualQuitAt(approach, startAt) : (a.quitAt || now);
   const future = quitAt > now + 60000;
-  const schedule = reductionSchedule(a, approach, startAt);
+  const reviewReason = planReviewReason(a, now);
+  const schedule = reviewReason ? [] : reductionSchedule(a, approach, startAt);
   const meds = medicines(a, approach, tx, safe.stop.length > 0, future);
 
   return {
     dep, safe, tx, perDay, triggers, withdrawal, motivation, refer, attempts, quitAt, future,
-    importance: imp, confidence: conf, approach, startAt, schedule, meds, sources: SOURCES,
+    importance: imp, confidence: conf, approach, startAt, schedule, meds: reviewReason ? [] : meds, reviewReason, sources: SOURCES,
   };
 }
 

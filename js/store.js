@@ -1,5 +1,25 @@
 // طفّيها — state, persistence and all the numbers the dashboard shows.
+import { assertState } from './security.js';
+import { latinDigits } from './validate.js';
 const KEY = 'tafiha.v1';
+let accountId = null;
+const storageKey = () => accountId ? `${KEY}:${accountId}` : KEY;
+
+export function selectAccount(id = null) { accountId = id; }
+export function guestDismissed() { try { return localStorage.getItem(`tafiha.guest-dismissed:${accountId}`) === '1'; } catch { return false; } }
+export function dismissGuest() { try { localStorage.setItem(`tafiha.guest-dismissed:${accountId}`, '1'); } catch { /* optional preference */ } }
+
+export function loadGuest() {
+  let raw;
+  try { raw = localStorage.getItem(KEY); } catch { return null; }
+  return raw ? assertState(JSON.parse(raw)) : null;
+}
+
+// Only retire the old copy after the account copy has been written successfully.
+export function retireGuest() {
+  if (!accountId || !load()) return false;
+  try { localStorage.removeItem(KEY); return true; } catch { return false; }
+}
 export const DAY = 86400000;
 const HOUR = 3600000;
 const MIN = 60000;
@@ -54,6 +74,7 @@ export function createState(a = {}) {
     v: 1,
     name: (a.name || '').trim(),
     quitAt: Math.min(a.quitAt || Date.now(), Date.now()),
+    journeyAt: Math.min(a.journeyAt || a.quitAt || Date.now(), Date.now()),
     habits: {
       cig: { active: on.includes('cig'), perDay: 20, packSize: 20, packPrice: 2.85, ...a.cig },
       vape: { active: on.includes('vape'), kind: 'disposable', unitPrice: 8, daysPerUnit: 4, puffs: 6000, ...a.vape },
@@ -65,6 +86,9 @@ export function createState(a = {}) {
     },
     cravings: [],
     slips: [],
+    deposits: [],
+    tobaccoExpenses: [],
+    savingsCarryCents: 0,
     goal: null,
   };
 }
@@ -107,6 +131,7 @@ export function createFromAssessment(a, tx, prev = null) {
   });
   // times in the future are allowed here: a planned quit day
   s.quitAt = a.quitAt;
+  s.journeyAt = Math.min(a.quitAt, a.assessedAt || now, now);
   s.assessment = a;
   s.patch = {
     active: patchOn,
@@ -129,31 +154,52 @@ export function createFromAssessment(a, tx, prev = null) {
     s.slips = prev.slips || [];
     s.goal = prev.goal || null;
     s.prep = prev.prep || {};
+    s.deposits = prev.deposits || [];
+    s.tobaccoExpenses = prev.tobaccoExpenses || [];
+    s.journeyAt = journeyStart(prev);
+    s.savingsCarryCents = prev.savingsCarryCents || 0;
+    s._t = { ...prev._t };
+    s._del = { ...prev._del };
   }
   return s;
 }
 
 // null means "no profile yet" → the app shows the intake interview
 export function load() {
-  try {
-    const raw = localStorage.getItem(KEY);
-    if (raw) return JSON.parse(raw);
-  } catch (e) { /* storage blocked */ }
-  return null;
+  let raw;
+  try { raw = localStorage.getItem(storageKey()); } catch { return null; }
+  return raw ? assertState(JSON.parse(raw)) : null;
 }
 
 export function save(s) {
-  try { localStorage.setItem(KEY, JSON.stringify(s)); } catch (e) { /* ignore */ }
+  assertState(s);
+  try { localStorage.setItem(storageKey(), JSON.stringify(s)); return true; } catch { return false; }
 }
 
 export function reset() {
-  try { localStorage.removeItem(KEY); } catch (e) { /* ignore */ }
+  try { localStorage.removeItem(storageKey()); localStorage.removeItem(`tafiha.guest-dismissed:${accountId}`); } catch (e) { /* ignore */ }
   return null;
 }
 
 // ---------------------------------------------------------------- numbers
 export const elapsed = (s, now = Date.now()) => Math.max(0, now - s.quitAt);
 export const daysFloat = (s, now) => elapsed(s, now) / DAY;
+export const journeyStart = (s) => s.journeyAt || Math.min(s.quitAt, s.assessment?.assessedAt || s.quitAt);
+export const journeyElapsed = (s, now = Date.now()) => Math.max(0, now - journeyStart(s));
+
+export function journeyMoney(s, now = Date.now()) {
+  const start = journeyStart(s);
+  const inRange = (t) => t >= start && t <= now;
+  const gross = dailyCost(s) * journeyElapsed(s, now) / DAY;
+  const type = primaryHabit(s), h = s.habits[type];
+  const unitCost = type === 'cig' ? h.packPrice / h.packSize : type === 'argileh' ? h.price : 0;
+  const units = (s.smokes || []).filter(inRange).length
+    + s.slips.filter((x) => !x.reset && inRange(x.at)).reduce((sum, x) => sum + (x.n || 1), 0);
+  const tobacco = units * unitCost + (s.tobaccoExpenses || []).filter((x) => inRange(x.at)).reduce((sum, x) => sum + x.cents / 100, 0);
+  const nrt = s.nrt.logs.filter(inRange).length * gumPrice(s)
+    + (s.patch?.logs || []).filter(inRange).length * patchPrice(s);
+  return { gross, tobacco, nrt, net: gross - tobacco - nrt };
+}
 
 export function activeHabits(s) {
   return Object.keys(HABITS).filter((k) => s.habits[k]?.active);
@@ -212,6 +258,37 @@ export function money(s, now) {
   const gross = Math.max(0, dailyCost(s) * daysFloat(s, now) - slipCost(s));
   const nrt = nrtSpent(s);
   return { gross, nrt, net: gross - nrt };
+}
+
+export const MAX_DEPOSIT_CENTS = 99999999;
+export function parseMoneyCents(value) {
+  const valueText = latinDigits(String(value)).trim().replace(/\u066b|,/g, '.');
+  if (!/^(?:\d{1,7}(?:\.\d{1,2})?|\.\d{1,2})$/.test(valueText)) return null;
+  const [whole, fraction = ''] = valueText.split('.');
+  const cents = Number(whole || 0) * 100 + Number(fraction.padEnd(2, '0'));
+  return cents > 0 && cents <= MAX_DEPOSIT_CENTS ? cents : null;
+}
+
+export function savings(s, now = Date.now()) {
+  const amounts = journeyMoney(s, now);
+  // what's due is the net saving: gum and patches were paid from the same money
+  const earnedCents = (s.savingsCarryCents || 0) + Math.round(amounts.net * 100);
+  const depositedCents = (s.deposits || []).reduce((sum, entry) => sum + entry.cents, 0);
+  return { earnedCents, depositedCents, dueCents: Math.max(0, earnedCents - depositedCents), aheadCents: Math.max(0, depositedCents - earnedCents) };
+}
+
+export function addDeposit(s, { cents, at = Date.now(), note = '' }, now = Date.now()) {
+  if (!Number.isSafeInteger(cents) || cents <= 0 || cents > MAX_DEPOSIT_CENTS || !Number.isSafeInteger(at) || at <= 0 || at > now + 60000 || typeof note !== 'string' || note.trim().length > 80) throw new Error('Invalid deposit');
+  const entry = { id: crypto.randomUUID(), at, cents, note: note.trim() };
+  (s.deposits ||= []).push(entry);
+  return entry;
+}
+
+export function restartJourney(s, now = Date.now()) {
+  s.journeyAt = journeyStart(s);
+  s.slips.push({ at: now, reset: true });
+  s.quitAt = now;
+  if (s.assessment) s.assessment = { ...s.assessment, quitAt: now, quitMode: 'done', approach: 'abrupt' };
 }
 
 // What the dashboard counts as "not consumed" for the main habit.

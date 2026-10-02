@@ -3,6 +3,7 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "test": "node tests/numbers.test.mjs && node tests/plan.test.mjs && node tests/approach.test.mjs && node tests/report.test.mjs && node tests/merge.test.mjs"
+    "preview": "node scripts/preview.mjs",
+    "test": "node tests/numbers.test.mjs && node tests/plan.test.mjs && node tests/approach.test.mjs && node tests/report.test.mjs && node tests/merge.test.mjs && node tests/accounts.test.mjs && node tests/sync.test.mjs && node tests/security.test.mjs && node tests/security-boundaries.test.mjs && node tests/savings.test.mjs"
   }
 }

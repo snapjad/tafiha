@@ -1,2 +1,6 @@
 .env*
 node_modules/
+.qa/
+
+# security notes about unfixed issues stay local (the repo is public)
+SECURITY_REVIEW.md

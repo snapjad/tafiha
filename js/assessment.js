@@ -1,6 +1,6 @@
 // طفّيها — the intake interview, like the first visit at a quit-smoking clinic.
 // Questions are declared as data (items can depend on earlier answers) and shown one per screen.
-import { CONDITIONS, MEDS, TRIGGERS, WITHDRAWAL, chooseApproach, gradualQuitAt } from './plan.js';
+import { CONDITIONS, MEDS, TRIGGERS, WITHDRAWAL, chooseApproach, gradualQuitAt, allowsLongPlan } from './plan.js';
 
 const esc = (v) => String(v ?? '').replace(/[&<>"']/g, (c) => `&#${c.charCodeAt(0)};`);
 const YES = [[true, 'آه'], [false, 'لا']];
@@ -55,7 +55,7 @@ const SECTIONS = [
     when: has('products', 'cig'),
     items: [
       { type: 'choice', id: 'ftnd_ttfc', label: 'بعد ما تصحى، إيمتى بتدخّن أول سيجارة؟', req: true, options: [['5', 'خلال 5 دقايق'], ['30', '6–30 دقيقة'], ['60', '31–60 دقيقة'], ['more', 'بعد أكتر من ساعة']] },
-      { type: 'choice', id: 'ftnd_forbidden', label: 'بيصعب عليك ما تدخّن بأماكن ممنوعة؟ (مستشفى، طيارة، مكتب)', req: true, options: YES },
+      { type: 'choice', id: 'ftnd_forbidden', label: 'بيصعب عليك ما تدخّن بأماكن ما بيسمحوا فيها بالتدخين؟ (مستشفى، طيارة، مكتب)', req: true, options: YES },
       { type: 'choice', id: 'ftnd_hate', label: 'أي سيجارة أصعب وحدة تتخلى عنها؟', req: true, options: [['first', 'أول وحدة الصبح'], ['other', 'أي وحدة تانية']] },
       { type: 'choice', id: 'ftnd_morning', label: 'بتدخّن أكتر بالساعات الأولى بعد ما تصحى من باقي اليوم؟', req: true, options: YES },
       { type: 'choice', id: 'ftnd_ill', label: 'بتدخّن وإنت مريض ونايم بالتخت معظم النهار؟', req: true, options: YES },
@@ -73,7 +73,7 @@ const SECTIONS = [
       { type: 'choice', id: 'vp_hard', label: 'بتستعمله لأنه صعب كتير تبطّله؟', req: true, options: YES },
       { type: 'choice', id: 'vp_crave', label: 'بيجيك اشتياق قوي إلو؟', req: true, options: YES },
       { type: 'choice', id: 'vp_urge', label: 'آخر أسبوع، قديش كانت الرغبة قوية؟', req: true, options: [['none', 'ما في أو خفيفة'], ['mid', 'متوسطة أو قوية'], ['high', 'قوية كتير']] },
-      { type: 'choice', id: 'vp_forbidden', label: 'بيصعب عليك ما تستعمله بأماكن ممنوعة؟', req: true, options: YES },
+      { type: 'choice', id: 'vp_forbidden', label: 'بيصعب عليك ما تستعمله بأماكن ما بيسمحوا فيها فيه؟', req: true, options: YES },
       { type: 'choice', id: 'vp_irritable', label: 'لما ما بتقدر تستعمله، بتصير عصبي أكتر؟', req: true, options: YES },
       { type: 'choice', id: 'vp_anxious', label: 'ولما ما بتقدر، بتحس بتوتر أو قلق أو ما بتقدر تقعد؟', req: true, options: YES },
     ],
@@ -122,7 +122,7 @@ const SECTIONS = [
   },
   {
     title: 'صحتك',
-    sub: 'حتى نعرف شو العلاج الآمن إلك. معلوماتك بتضل على جهازك بس.',
+    sub: 'حتى نعرف شو الأنسب إلك. رحلتك بتنحفظ على جهازك وبتتزامن مع الخدمة عند توفر الاتصال. الحساب بيربطها بإيميلك.',
     items: [
       { type: 'multi', id: 'conditions', label: 'عندك أي من هدول؟', req: true, none: 'ولا وحدة', options: CONDITIONS.map((c) => [c.id, c.label]) },
       { type: 'multi', id: 'meds', label: 'بتاخد أي من هالأدوية؟', hint: 'ترك الدخان بيغيّر مستواها بالدم.', req: true, none: 'ولا واحد', options: MEDS.map((m) => [m.id, m.label]) },
@@ -149,7 +149,7 @@ const SECTIONS = [
     ],
   },
   {
-    title: 'يوم الترك',
+    title: 'يوم الإقلاع',
     sub: 'الأفضل تحدد يوم خلال أسبوعين، وتتجهّز قبله.',
     items: [
       { type: 'choice', id: 'quitMode', label: 'وين إنت هلأ؟', req: true, cards: true, options: [['done', 'تركت خلص'], ['future', 'لسّا بدخّن، بدي أحدد يوم']] },
@@ -157,8 +157,8 @@ const SECTIONS = [
       { type: 'date', id: 'pastDate', label: 'التاريخ والساعة', when: (a) => a.quitMode === 'done' && a.when === 'custom', past: true },
       { type: 'choice', id: 'approach', label: 'كيف بدك تتركها؟', hint: 'حسب الأبحاث، الترك مرة وحدة نتيجته أعلى أو مساوية للتدريجي.', req: true, cards: true,
         when: (a) => a.quitMode === 'future' && a.rx !== 'cytisine',
-        options: [['abrupt', 'مرة وحدة بيوم محدد', 'بتختار يوم خلال أسبوعين وبتوقف فيه'], ['gradual-short', 'تخفيف سريع', 'نص الكمية، بعدين ربعها، وبتوقف بعد أسبوعين'], ['gradual-long', 'تخفيف على مهل', 'بتنزّل كل أسبوع وبتوقف بعد 12 أسبوع'], ['advise', 'انصحني']] },
-      { type: 'date', id: 'futureDate', label: 'يوم الترك', hint: 'الأفضل خلال أسبوعين.', when: (a) => a.quitMode === 'future' && (a.rx === 'cytisine' || a.approach === 'abrupt' || (a.approach === 'advise' && chooseApproach(a) === 'abrupt')), future: true },
+        options: [['abrupt', 'مرة وحدة بيوم محدد', 'بتختار موعد قريب وبتوقف فيه'], ['gradual-short', 'تخفيف سريع للسجائر', 'خيار أسبوعين: نص الكمية، بعدين ربعها، وبعدها إقلاع'], ['gradual-long', 'مسار الفارينكلين مع الطبيب', 'خيار حتى 12 أسبوع للسجائر مع الدواء الموصوف، مش مدة إلزامية'], ['advise', 'انصحني']] },
+      { type: 'date', id: 'futureDate', label: 'يوم الإقلاع', hint: 'اختار موعد واقعي قريب. مدة استخدام البدائل بعده مختلفة عن موعد الإقلاع.', when: (a) => a.quitMode === 'future' && chooseApproach(a) === 'abrupt', future: true },
     ],
   },
 ];
@@ -192,7 +192,7 @@ function stepper(it, a) {
     <span class="st-label">${it.label}</span>
     <div class="st-row">
       <button type="button" class="st-btn" data-d="1" aria-label="زيد">+</button>
-      <input type="number" inputmode="decimal" min="0" step="${it.step}" name="${it.id}" value="${v}" aria-label="${it.label}">
+      <input type="number" inputmode="decimal" min="0" step="${it.step}" name="${it.id}" value="${esc(v)}" aria-label="${it.label}">
       <button type="button" class="st-btn" data-d="-1" aria-label="نقّص">−</button>
     </div>
   </div>`;
@@ -212,9 +212,12 @@ function control(step, a) {
       <div class="scale-ends"><span>${it.low}</span><span>${it.high}</span></div>`;
   }
   if (it.type === 'choice') {
-    const yesno = it.options.length === 2 && typeof it.options[0][0] === 'boolean';
-    const cls = yesno ? 'big-opts two' : it.options.length > 4 ? 'big-opts grid' : 'big-opts';
-    return `<div class="${cls}" role="radiogroup">${it.options.map(([v, l, h]) =>
+    const options = it.options.filter(([v]) => it.id !== 'approach'
+      || (v !== 'gradual-long' || allowsLongPlan(a))
+      && (v !== 'gradual-short' || (a.products?.length === 1 && a.products[0] === 'cig')));
+    const yesno = options.length === 2 && typeof options[0][0] === 'boolean';
+    const cls = yesno ? 'big-opts two' : options.length > 4 ? 'big-opts grid' : 'big-opts';
+    return `<div class="${cls}" role="radiogroup">${options.map(([v, l, h]) =>
       `<button type="button" role="radio" data-q="${it.id}" data-v='${JSON.stringify(v)}' aria-checked="${a[it.id] === v}" aria-pressed="${a[it.id] === v}"><span class="t">${l}</span>${h ? `<span class="h">${h}</span>` : ''}</button>`).join('')}</div>`;
   }
   if (it.type === 'multi') {
@@ -260,14 +263,14 @@ export function runAssessment(prev = {}, opts = {}) {
       let html;
       if (step.intro) {
         html = `
-          <div class="onb-hero"><img src="assets/apple-touch-icon.png" alt="" width="76" height="76"><span class="word">طفّيها</span></div>
+          <div class="onb-hero lockup"><img class="lockup-icon" src="assets/brand/tafiha-icon-rounded.svg" alt="" width="72" height="72"><img class="wordmark" src="assets/brand/tafiha-logo-transparent-dark.svg" alt="طفّيها" width="132" height="76"></div>
           <h1 class="q-title">خلّينا نتعرّف عليك</h1>
           <p class="sub">نفس أسئلة عيادة الإقلاع، وبالآخر بتاخد تقرير وخطة إلك إنت.</p>
           <label class="field">اسمك<input name="name" value="${esc(a.name)}" maxlength="24" autocomplete="given-name" placeholder="اختياري"></label>
           <p class="onb-err" role="alert"></p>
           <div class="onb-actions">
             <button class="btn btn-red" data-next>يلا نبلّش</button>
-            ${opts.onLink ? '<button class="btn btn-line" type="button" data-link>عندي بيانات على جهاز تاني</button>' : ''}
+            ${opts.onLogin ? '<button class="btn btn-line" type="button" data-login>عندي حساب، سجّل دخول</button>' : ''}
           </div>`;
       } else {
         const it = step.items[0];
@@ -299,7 +302,7 @@ export function runAssessment(prev = {}, opts = {}) {
       for (const it of step.items) {
         if (it.type === 'num' && !(a[it.id] > 0)) return `«${it.label}» لازم يكون أكبر من صفر.`;
         if (it.type === 'date' && !Number.isFinite(a[it.id])) return 'اختار التاريخ.';
-        if (it.type === 'date' && it.future && a[it.id] <= Date.now()) return 'يوم الترك لازم يكون بالمستقبل.';
+        if (it.type === 'date' && it.future && a[it.id] <= Date.now()) return 'يوم الإقلاع لازم يكون بالمستقبل.';
         if (!it.req) continue;
         if ((it.type === 'choice' || it.type === 'scale') && a[it.id] === undefined) return 'اختار جواب.';
         if (it.type === 'multi' && (!Array.isArray(a[it.id]) || (!it.none && !a[it.id].length))) return 'اختار شي واحد على الأقل.';
@@ -359,45 +362,15 @@ export function runAssessment(prev = {}, opts = {}) {
         el.querySelector('.onb-err').textContent = '';
       });
       el.querySelector('[data-next]')?.addEventListener('click', () => next(el, step));
-      el.querySelector('[data-link]')?.addEventListener('click', () => linkForm(el));
+      el.querySelector('[data-login]')?.addEventListener('click', () => leave({ __login: true }));
       setTimeout(() => (el.querySelector('input:not([type=number])') || el.querySelector('button[aria-pressed="true"], button[data-q], button[data-m], [data-next]'))?.focus({ preventScroll: true }), 60);
     }
 
-    // join the data of another device with a code shown there
-    function linkForm(el) {
-      el.innerHTML = `
-        <h1 class="q-title" style="margin-top:5vh">اربط هالجهاز</h1>
-        <p class="sub">الرمز بيطلع من الجهاز اللي عليه بياناتك: افتح طفّيها عليه، اكبس زر الإعدادات فوق، وبعدين «اربط جهاز تاني».</p>
-        <p class="hint">ما عندك بيانات على أي جهاز لسّا؟ اكبس «رجوع» وابدأ المقابلة هون، وبعدين اربط أجهزتك التانية منه.</p>
-        <input class="big-input code-input" dir="ltr" autocomplete="off" autocapitalize="characters" maxlength="9" placeholder="XXXX-XXXX">
-        <p class="onb-err" role="alert"></p>
-        <div class="onb-actions">
-          <button class="btn btn-red" data-go>اربط</button>
-          <button class="btn btn-soft" type="button" data-cancel>رجوع</button>
-        </div>`;
-      const inp = el.querySelector('.code-input');
-      inp.focus();
-      el.querySelector('[data-cancel]').onclick = () => render();
-      el.querySelector('[data-go]').onclick = async () => {
-        const go = el.querySelector('[data-go]');
-        go.disabled = true;
-        go.textContent = 'عم يربط…';
-        try {
-          const ok = await opts.onLink(inp.value);
-          if (ok) {
-            root.classList.add('leave');
-            document.body.style.overflow = '';
-            setTimeout(() => root.remove(), 520);
-            resolve({ __linked: true });
-            return;
-          }
-          el.querySelector('.onb-err').textContent = 'الرمز غلط أو خلص وقته. اطلب رمز جديد من الجهاز التاني.';
-        } catch (e) {
-          el.querySelector('.onb-err').textContent = 'ما زبط الربط. تأكد من النت وجرّب كمان مرة.';
-        }
-        go.disabled = false;
-        go.textContent = 'اربط';
-      };
+    function leave(result) {
+      root.classList.add('leave');
+      document.body.style.overflow = '';
+      setTimeout(() => root.remove(), 520);
+      resolve(result);
     }
 
     function finish() {
@@ -411,10 +384,7 @@ export function runAssessment(prev = {}, opts = {}) {
       else if (a.when === 'yesterday') a.quitAt = now - 864e5;
       else a.quitAt = Math.min(a.pastDate || now, now);
       a.assessedAt = now;
-      root.classList.add('leave');
-      document.body.style.overflow = '';
-      setTimeout(() => root.remove(), 520);
-      resolve(a);
+      leave(a);
     }
 
     render();

@@ -2,23 +2,39 @@
 <html lang="ar" dir="rtl">
 <head>
   <meta charset="utf-8">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com data:; img-src 'self' data: blob:; connect-src 'self' https://wgwbgutzwqkrugfkcchc.supabase.co wss://wgwbgutzwqkrugfkcchc.supabase.co https://fonts.googleapis.com https://fonts.gstatic.com; object-src 'none'; base-uri 'none'; form-action 'self'; frame-src 'self'; worker-src 'self' blob:">
+  <meta name="referrer" content="no-referrer">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <title>طفّيها</title>
   <meta name="description" content="طفّيها: رفيقك لترك السجاير والفيب والأرجيلة.">
-  <meta name="theme-color" content="#e1261c">
+  <meta name="theme-color" content="#f3f3f4">
   <link rel="manifest" href="manifest.webmanifest">
-  <link rel="icon" type="image/png" href="assets/icon-192.png">
+  <link rel="icon" type="image/svg+xml" href="assets/brand/favicon.svg">
+  <link rel="icon" type="image/png" sizes="32x32" href="assets/favicon-32.png">
   <link rel="apple-touch-icon" href="assets/apple-touch-icon.png">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-title" content="طفّيها">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Readex+Pro:wght@300..700&display=swap">
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Alexandria:wght@600..800&family=Readex+Pro:wght@300..700&display=swap">
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Big+Shoulders+Display:wght@700..900&display=swap">
   <link rel="preload" as="image" href="assets/cig-body.webp">
   <link rel="stylesheet" href="css/app.css">
 </head>
-<body>
+<body class="booting">
+  <div class="boot-status" id="bootStatus" role="status">
+    <div class="boot-center">
+      <svg class="boot-mark" viewBox="236 -206 140 222" width="112" height="178" aria-hidden="true">
+        <path class="boot-smoke" d="M322 -42 C 336 -78, 312 -104, 328 -136 S 320 -176, 334 -200"/>
+        <path d="M330 -61.38 A 30 30 0 0 1 344 -36 V -30 A 30 30 0 0 1 314 0 H 298 A 30 30 0 0 1 268 -30 V -36 A 30 30 0 0 1 282 -61.38" fill="none" stroke="#fff" stroke-width="24"/>
+        <rect x="294" y="-150" width="24" height="36" fill="#E5A548"/>
+        <rect x="294" y="-111" width="24" height="65" fill="#fff"/>
+        <rect class="boot-tip" x="294" y="-43" width="24" height="15" fill="#E1261C"/>
+      </svg>
+      <p class="boot-text">عم نجهّز رحلتك…</p>
+    </div>
+    <img class="boot-word" src="assets/brand/tafiha-logo-transparent-light.svg" alt="طفّيها" width="104" height="60">
+  </div>
   <svg width="0" height="0" style="position:absolute" aria-hidden="true">
     <symbol id="i-sliders" viewBox="0 0 24 24"><path d="M4 7h9M17 7h3M4 17h3M11 17h9"/><circle cx="15" cy="7" r="2.2"/><circle cx="9" cy="17" r="2.2"/></symbol>
     <symbol id="i-plus" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></symbol>
@@ -36,11 +52,11 @@
   <div class="app">
     <header class="top">
       <div class="brand">
-        <img src="assets/apple-touch-icon.png" alt="" width="36" height="36">
-        <span class="brand-word">طفّيها</span>
+        <img class="wordmark" src="assets/brand/tafiha-logo-transparent-dark.svg" alt="طفّيها" width="80" height="46">
       </div>
       <p class="greet"><span id="greet">أهلا</span> يا <b id="name"></b></p>
       <span class="sync-dot" id="syncDot" data-s="off" role="img" aria-label=""></span>
+      <button class="account-trigger" id="openAccount" aria-label="حسابي" title="حسابي">حسابي</button>
       <button class="icon-btn" id="openSettings" aria-label="الإعدادات">
         <svg class="ico"><use href="#i-sliders"/></svg>
       </button>
@@ -55,7 +71,7 @@
             <div class="hero-main">
               <div class="clock" id="clock" aria-live="off">
                 <div class="unit unit-days"><span class="num" data-k="d">0</span><span class="lbl" data-l="d">يوم</span></div>
-                <div class="hms">
+                <div class="hms" dir="ltr">
                   <div class="unit"><span class="num" data-k="h">00</span><span class="lbl" data-l="h">ساعة</span></div>
                   <span class="sep" aria-hidden="true">:</span>
                   <div class="unit"><span class="num" data-k="m">00</span><span class="lbl" data-l="m">دقيقة</span></div>
@@ -86,6 +102,11 @@
             </div>
           </section>
 
+          <section id="planReview" class="plan-review" aria-labelledby="planReviewTitle" hidden>
+            <h2 id="planReviewTitle" class="card-title">راجع موعد الإقلاع</h2>
+            <p id="planReviewReason"></p>
+            <button type="button" class="btn btn-red" id="reviewPlanBtn">راجع خطتي</button>
+          </section>
           <section class="card cut" style="--i:1" id="cutCard" aria-labelledby="cutTitle" hidden>
             <div class="card-head">
               <h2 class="card-title" id="cutTitle">مسموحلك اليوم</h2>
@@ -100,7 +121,7 @@
 
           <section class="card prep" style="--i:1" id="prepCard" aria-labelledby="prepTitle" hidden>
             <div class="card-head">
-              <h2 class="card-title" id="prepTitle">تجهّز ليوم الترك</h2>
+              <h2 class="card-title" id="prepTitle">تجهّز ليوم الإقلاع</h2>
               <span class="spacer"></span>
               <span class="badge" id="prepCount"></span>
             </div>
@@ -111,7 +132,7 @@
             <section class="card tile" style="--i:2">
               <img class="tile-ico" src="assets/icons/coins.webp" alt="" width="400" height="400">
               <div class="tile-n"><span class="n" id="stMoney">0</span><small>د.أ</small></div>
-              <p class="tile-k">وفّرت</p>
+              <p class="tile-k">صافي التوفير</p>
             </section>
             <section class="card tile" style="--i:3">
               <img class="tile-ico" src="assets/icons/pack.webp" alt="" width="400" height="400">
@@ -125,13 +146,29 @@
             </section>
           </div>
 
-          <section class="card today" style="--i:5" id="todayCard" hidden>
-            <img class="today-ico" id="todayIco" src="assets/icons/gum.webp" alt="" width="400" height="400">
-            <div class="today-txt">
-              <p class="today-k" id="todayK"></p>
-              <p class="today-main" id="todayMain"></p>
+          <section class="savings" id="savings" aria-labelledby="savingsTitle">
+            <div class="savings-head"><h2 id="savingsTitle">حصّالة الإقلاع</h2><button class="savings-history" id="depositHistory">سجل الإيداعات</button></div>
+            <p class="card-sub" id="savingsStatus"></p>
+            <button class="savings-history" id="savingsDate" hidden>تركت بالفعل؟ صحّح يوم الإقلاع</button>
+            <div class="savings-balances">
+              <div class="savings-due"><span>المستحق للإيداع</span><strong><bdi id="depositDue">0.00</bdi><small>د.أ</small></strong></div>
+              <div class="savings-paid"><span>أودعت لحد الآن</span><strong><bdi id="depositPaid">0.00</bdi><small>د.أ</small></strong></div>
             </div>
-            <button class="btn btn-ink today-btn" id="todayBtn"></button>
+            <p class="savings-ahead" id="depositAhead" hidden></p>
+            <button class="btn btn-red btn-block" id="depositAdd"><svg class="ico" aria-hidden="true"><use href="#i-plus"/></svg>سجّل إيداع</button>
+          </section>
+
+          <section class="today" id="todayCard" aria-labelledby="todayTitle">
+            <div class="card-head"><h2 class="card-title" id="todayTitle">بدائلي اليوم</h2><span class="spacer"></span><button class="icon-btn" id="todaySettings" aria-label="إعدادات البدائل" title="إعدادات البدائل"><svg class="ico" aria-hidden="true"><use href="#i-sliders"/></svg></button></div>
+            <p class="card-sub" id="todayNotice"></p>
+            <div class="replacement" id="homeGum" hidden>
+              <div class="replacement-head"><img class="today-ico" src="assets/icons/gum.webp" alt="" width="400" height="400"><div><h3>علكة النيكوتين <small id="homeGumMg"></small></h3><p id="homeGumUsage"></p><p id="homeGumStock"></p></div></div>
+              <div class="replacement-actions"><button class="btn btn-ink" id="homeGumLog"><svg class="ico" aria-hidden="true"><use href="#i-plus"/></svg>سجّل حبة</button><button class="btn btn-soft" id="homeGumPack">اشتريت علبة</button><button class="btn btn-line" id="homeGumHow">كيف أستخدمها؟</button></div>
+            </div>
+            <div class="replacement" id="homePatch" hidden>
+              <div class="replacement-head"><img class="today-ico" src="assets/icons/patch.webp" alt="" width="400" height="400"><div><h3>لزقة النيكوتين</h3><p id="homePatchUsage"></p><p id="homePatchStock"></p></div></div>
+              <div class="replacement-actions"><button class="btn btn-ink" id="homePatchLog">سجّل لزقة</button><button class="btn btn-soft" id="homePatchPack">اشتريت علبة</button><button class="btn btn-line" id="homePatchHow">كيف أستخدمها؟</button></div>
+            </div>
           </section>
         </div>
       </div>
@@ -150,7 +187,7 @@
             </div>
             <div class="plan-actions">
               <button class="btn btn-ink" id="planBtn">افتح التقرير</button>
-              <button class="btn btn-soft" id="planPdfBtn"><svg class="ico" aria-hidden="true"><use href="#i-download"/></svg>نزّل PDF</button>
+              <button class="btn btn-soft" id="planPdfBtn"><svg class="ico" aria-hidden="true"><use href="#i-download"/></svg>نزّل خطتك</button>
             </div>
           </section>
 
@@ -194,8 +231,10 @@
                 <li>امضغ لحد ما تحس بطعم لاذع.</li>
                 <li>حطها بين خدّك ولثّتك، وارجع امضغ كل شوي.</li>
                 <li>الحبة الوحدة حوالي نص ساعة.</li>
-                <li>لا قهوة ولا عصير قبلها وخلالها بربع ساعة.</li>
+                <li>تجنّب الأكل والشرب لمدة 15 دقيقة قبل الاستخدام وطول ما العلكة بفمك.</li>
               </ol>
+              <p>الجرعة والحد الأقصى حسب نشرة منتجك والصيدلي، خصوصاً مع اللزقة أو للإقلاع عن الفيب. الرقم المسجّل بالتطبيق مش جرعة موصوفة.</p>
+              <a href="https://www.cdc.gov/tobacco/campaign/tips/quit-smoking/quit-smoking-medications/how-to-use-quit-smoking-medicines/how-to-use-nicotine-gum.html" target="_blank" rel="noopener noreferrer">المصدر: CDC</a>
             </details>
           </section>
 
@@ -215,10 +254,12 @@
             <details class="howto">
               <summary>كيف تحطها صح</summary>
               <ol>
-                <li>الصبح، على جلد نضيف وبلا شعر: الذراع أو الكتف أو الصدر.</li>
+                <li>شيل اللزقة القديمة قبل الجديدة. حطها على جلد نظيف وجاف وسليم وقليل الشعر، حسب نشرة المنتج.</li>
                 <li>غيّر مكانها كل يوم.</li>
-                <li>إذا أثّرت على نومك، شيلها قبل ما تنام.</li>
+                <li>مدة اللبس حسب نوعها ونشرتها. إذا أثّرت على نومك، اسأل الصيدلي عن نزعها ليلاً.</li>
               </ol>
+              <p>لا تضيف لزقة ثانية أو تغيّر قوتها بدون توجيه مختص. البدء قبل يوم الإقلاع يحتاج تأكيد ملاءمته لحالتك ونشرة منتجك.</p>
+              <a href="https://www.cdc.gov/tobacco/campaign/tips/quit-smoking/quit-smoking-medications/how-to-use-quit-smoking-medicines/how-to-use-a-nicotine-patch.html" target="_blank" rel="noopener noreferrer">المصدر: CDC</a>
             </details>
           </section>
         </div>
@@ -279,9 +320,9 @@
 
           <section class="card sharecard" style="--i:3" aria-labelledby="shareTitle">
             <div class="share">
-              <div class="story-mini" aria-hidden="true"><b id="storyDays">0</b><span id="storyLbl">يوم</span><small>طفّيها</small></div>
+              <div class="story-mini" aria-hidden="true"><b id="storyDays">0</b><span id="storyLbl">يوم</span><img src="assets/brand/tafiha-mark-transparent-light.svg" alt="" width="10" height="16"></div>
               <div>
-                <h2 class="card-title" id="shareTitle">شارك إنجازك</h2>
+                <h2 class="card-title" id="shareTitle">شارك يومك</h2>
                 <div class="share-actions">
                   <button class="btn btn-red" id="shareBtn"><svg class="ico" aria-hidden="true"><use href="#i-story"/></svg>ستوري</button>
                   <button class="btn btn-line" id="inviteBtn">ادعُ صاحبك</button>
@@ -291,8 +332,8 @@
           </section>
 
           <section class="card slip" style="--i:4">
-            <p><b>زلّيت؟</b> عادي. سجّلها وكمّل.<span class="slip-note" id="slipNote" hidden></span></p>
-            <button class="btn btn-soft" id="slipBtn">سجّل زلّة</button>
+            <p><b>العدّاد ما بيتصفّر.</b> إذا زلّيت، سجّلها وكمّل.<span class="slip-note" id="slipNote" hidden></span></p>
+            <button class="btn btn-soft" id="slipBtn">زلّيت؟ عادي</button>
           </section>
         </div>
       </div>

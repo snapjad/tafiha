@@ -8,15 +8,31 @@
 const CONFIG = {
   name: (s) => s.name,
   quitAt: (s) => s.quitAt,
+  journeyAt: (s) => s.journeyAt,
   habits: (s) => s.habits,
   goal: (s) => s.goal,
+  savingsCarryCents: (s) => s.savingsCarryCents,
   assessment: (s) => s.assessment,
   prep: (s) => s.prep,
   nrt: (s) => (s.nrt ? strip(s.nrt) : null),
   patch: (s) => (s.patch ? strip(s.patch) : null),
 };
 const NUMS = ['nrt.logs', 'nrt.packs', 'patch.logs', 'patch.packs', 'smokes'];
-const OBJS = ['cravings', 'slips'];
+const OBJS = ['cravings', 'slips', 'deposits', 'tobaccoExpenses'];
+
+// Equal as saved JSON: Postgres JSONB can reorder object keys, and saving drops
+// fields that are undefined (a cigarette-only journey has some in its vape and
+// argileh settings), so neither counts as a change. Otherwise every save would
+// look unsaved and the app would keep writing.
+export function same(a, b) {
+  if (a === b) return true;
+  if (!a || !b || typeof a !== 'object' || typeof b !== 'object') return false;
+  if (Array.isArray(a) !== Array.isArray(b)) return false;
+  if (Array.isArray(a)) return a.length === b.length && a.every((x, i) => same(x, b[i]));
+  const keys = Object.keys(a).filter((k) => a[k] !== undefined);
+  return keys.length === Object.keys(b).filter((k) => b[k] !== undefined).length &&
+    keys.every((k) => Object.hasOwn(b, k) && same(a[k], b[k]));
+}
 
 function strip(o) {
   const { logs, packs, ...rest } = o;
@@ -34,7 +50,8 @@ function put(s, path, v) {
   if (parent) parent[last] = v;
 }
 
-const idOf = (path, item) => `${path}:${typeof item === 'object' ? item.at : item}`;
+const hasId = (path) => path === 'deposits' || path === 'tobaccoExpenses';
+const idOf = (path, item) => `${path}:${hasId(path) ? item.id : typeof item === 'object' ? item.at : item}`;
 
 // what we compare against to notice local changes
 export function snapshot(s) {
@@ -92,9 +109,10 @@ export function merge(a, b) {
   for (const p of OBJS) {
     const byAt = new Map();
     for (const item of [...(get(a, p) || []), ...(get(b, p) || [])]) {
-      const prev = byAt.get(item.at);
+      const id = hasId(p) ? item.id : item.at;
+      const prev = byAt.get(id);
       // the fuller record wins (e.g. one that already has the trigger filled in)
-      if (!prev || JSON.stringify(item).length > JSON.stringify(prev).length) byAt.set(item.at, item);
+      if (!prev || JSON.stringify(item).length > JSON.stringify(prev).length) byAt.set(id, item);
     }
     out[p] = [...byAt.values()].filter((x) => !del[idOf(p, x)]).sort((x, y) => x.at - y.at);
   }

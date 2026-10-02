@@ -1,4 +1,5 @@
 -- طفّيها — sync storage.
+-- For a new setup, apply accounts.sql, then security.sql after this file.
 --
 -- Each person's whole app state is one JSON document. There are no accounts:
 -- a device holds a random secret key (32 bytes) and the row id is its SHA-256,

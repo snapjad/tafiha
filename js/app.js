@@ -5,14 +5,21 @@ import { makeStory } from './share.js';
 import { initCigarette } from './cigarette.js';
 import { runAssessment } from './assessment.js';
 import { openReport, downloadPDF } from './report.js';
-import { buildReport, planWeek, patchStepFor, gumStageFor, stepAt, APPROACHES, unitOf, targetText } from './plan.js';
+import { buildReport, planWeek, patchStepFor, gumStageFor, stepAt, APPROACHES, unitOf, targetText, planReviewReason } from './plan.js';
 import * as Sync from './sync.js';
+import * as Auth from './account.js';
+import { merge } from './merge.js';
+import { assertAssessment } from './security.js';
 
 const $ = (sel, root = document) => root.querySelector(sel);
 const RM = matchMedia('(prefers-reduced-motion: reduce)').matches;
 const RING_C = 2 * Math.PI * 52;
 
-let state = S.load();
+let state = null;
+let currentUser = null;
+let booted = false;
+let accountBound = false;
+let leavingAccount = false;
 // every local change: stamp it for sync, save it, and queue it for the other devices
 const persist = () => { Sync.changed(state); S.save(state); };
 
@@ -37,7 +44,10 @@ function showSync(s) {
   dot.setAttribute('aria-label', SYNC_LABEL[s] || '');
   dot.title = SYNC_LABEL[s] || '';
   const line = document.getElementById('syncLine');
-  if (line) line.lastChild.textContent = SYNC_LABEL[s] || '';
+  if (line) {
+    line.lastChild.textContent = SYNC_LABEL[s] || '';
+    line.querySelector('.sync-dot').dataset.s = s;
+  }
 }
 
 let cigarette = null;
@@ -66,10 +76,12 @@ function animateNum(el, from, to, dec, dur) {
 }
 
 function setNum(el, to, dec = 0) {
+  if (el._to === to && el._dec === dec) return;
   el._to = to;
   el._dec = dec;
   el.dataset.num = '';
-  if (!el.closest('.card')?.classList.contains('in')) return;
+  const card = el.closest('.card');
+  if (card && !card.classList.contains('in')) return;
   animateNum(el, el._v ?? 0, to, dec, el._v == null ? 1400 : 700);
 }
 
@@ -121,7 +133,8 @@ function dateAr(t) {
 
 function tickClock() {
   const left = state.quitAt - Date.now();
-  const eyebrow = left > 0 ? 'باقي لتطفّيها' : 'صارلك طافيها';
+  const review = state.assessment && planReviewReason(state.assessment);
+  const eyebrow = left > 0 ? (review ? 'موعد محفوظ بحاجة مراجعة' : 'باقي لتطفّيها') : 'صارلك طافيها';
   if ($('#heroEyebrow').textContent !== eyebrow) $('#heroEyebrow').textContent = eyebrow;
   const e = left > 0 ? left : S.elapsed(state);
   const d = Math.floor(e / S.DAY);
@@ -139,7 +152,7 @@ function tickClock() {
 function renderNext() {
   if (isPrep()) {
     const from = state.assessment?.assessedAt || state.quitAt - 7 * S.DAY;
-    $('#nextName').textContent = 'يوم الترك';
+    $('#nextName').textContent = 'يوم الإقلاع';
     $('#nextLeft').textContent = dateAr(state.quitAt);
     $('#nextBar').style.setProperty('--p', Math.min(1, Math.max(0, (Date.now() - from) / (state.quitAt - from))).toFixed(4));
     return;
@@ -158,47 +171,129 @@ function renderNext() {
 
 // ---------------------------------------------------------------- stats
 function renderStats() {
-  const mo = S.money(state);
-  setNum($('#stMoney'), Math.max(0, mo.net), 2);
+  renderSavings();
   const av = S.avoided(state);
   setNum($('#stUnits'), av.units);
   $('#stUnitsK').textContent = av.unitLabel;
   setNum($('#stBeaten'), S.beaten(state));
 }
 
-// today's nicotine replacement, one line on the home page
+function renderSavings() {
+  const balance = S.savings(state);
+  const prep = isPrep();
+  const net = S.money(state);
+  const status = prep
+    ? `التوفير بيبدأ من يوم الإقلاع المسجّل: ${dateAr(state.quitAt)}. أي إيداع قبله بينحسب مقدّم.`
+    : S.dailyCost(state) <= 0 ? 'مصروف التدخين المسجّل صفر؛ راجع الكمية والسعر بالإعدادات.'
+    : net.net < 0 ? 'تكلفة البدائل المسجّلة أعلى من التوفير الحالي؛ الصافي بيظهر لما يغطيها التوفير.'
+    : 'صافي التوفير بيتراكم مع الوقت بعد خصم البدائل، وبيظهر لأقرب قرش. الإيداع منفصل عنه.';
+  if ($('#savingsStatus').textContent !== status) $('#savingsStatus').textContent = status;
+  $('#savingsDate').hidden = !prep;
+  setNum($('#stMoney'), balance.earnedCents / 100, 2);
+  setNum($('#depositDue'), balance.dueCents / 100, 2);
+  setNum($('#depositPaid'), balance.depositedCents / 100, 2);
+  $('#depositAhead').hidden = balance.aheadCents === 0;
+  $('#depositAhead').textContent = balance.aheadCents ? `إيداعك متقدّم بـ ${S.fmtMoney(balance.aheadCents / 100)} د.أ` : '';
+}
+
+function commitSavings(next) {
+  if (!S.save(next)) { toast('ما قدرنا نحفظ الإيداع على هالجهاز. جرّب كمان مرة.'); return false; }
+  state = next;
+  persist();
+  renderSavings();
+  renderGoal();
+  return true;
+}
+
+function openDeposit() {
+  const due = S.savings(state).dueCents;
+  openSheet(`
+    <h2>سجّل إيداع</h2>
+    <div class="deposit-summary"><span>المستحق للإيداع</span><strong><bdi>${S.fmtMoney(due / 100)}</bdi> د.أ</strong></div>
+    <form class="form" id="depositForm" novalidate>
+      <label class="field">المبلغ المودَع (د.أ)<input name="amount" type="text" dir="ltr" inputmode="decimal" autocomplete="off" maxlength="12" value="${due > 0 ? (due / 100).toFixed(2) : ''}" placeholder="0.00" aria-describedby="depositError" required></label>
+      <label class="field">تاريخ الإيداع<input name="at" type="datetime-local" value="${toLocalInput(Date.now())}" max="${toLocalInput(Date.now())}" required></label>
+      <label class="field">ملاحظة (اختياري)<input name="note" maxlength="80" autocomplete="off"></label>
+      <p class="deposit-error" id="depositError" role="alert"></p>
+      <div class="sheet-actions"><button class="btn btn-red" type="submit"><svg class="ico" aria-hidden="true"><use href="#i-check"/></svg>احفظ الإيداع</button><button class="btn btn-soft" type="button" data-close>إلغاء</button></div>
+    </form>`, (sheet) => {
+    const form = $('#depositForm', sheet);
+    let saved = false;
+    form.onsubmit = (ev) => {
+      ev.preventDefault();
+      if (saved) return;
+      const cents = S.parseMoneyCents(form.elements.amount.value);
+      const at = new Date(form.elements.at.value).getTime();
+      const error = $('#depositError', sheet);
+      if (cents === null) { error.textContent = 'اكتب مبلغ أكبر من صفر، بحد أقصى منزلتين بعد الفاصلة.'; form.elements.amount.setAttribute('aria-invalid', 'true'); form.elements.amount.focus(); return; }
+      if (!Number.isSafeInteger(at) || at <= 0 || at > Date.now()) { error.textContent = 'اختار تاريخ إيداع صحيح، مش بالمستقبل.'; form.elements.at.focus(); return; }
+      const next = structuredClone(state);
+      const entry = S.addDeposit(next, { cents, at, note: form.elements.note.value });
+      if (!commitSavings(next)) return;
+      saved = true;
+      closeSheet();
+      toast('انسجل إيداعك', 'تراجع', () => {
+        const copy = structuredClone(state);
+        copy.deposits = (copy.deposits || []).filter((x) => x.id !== entry.id);
+        commitSavings(copy);
+      });
+    };
+  });
+}
+
+function openDepositHistory() {
+  const entries = [...(state.deposits || [])].sort((a, b) => b.at - a.at || a.id.localeCompare(b.id));
+  const deposited = S.savings(state).depositedCents;
+  openSheet(`<h2>سجل الإيداعات</h2>
+    <div class="deposit-summary"><span>مجموع الإيداعات</span><strong><bdi>${S.fmtMoney(deposited / 100)}</bdi> د.أ</strong></div>
+    ${entries.length ? `<ul class="deposit-list">${entries.map((entry) => `<li class="deposit-entry">
+      <div><time datetime="${new Date(entry.at).toISOString()}">${esc(new Date(entry.at).toLocaleString('ar-JO-u-nu-latn', { dateStyle: 'medium', timeStyle: 'short' }))}</time>${entry.note ? `<p>${esc(entry.note)}</p>` : ''}</div>
+      <strong><bdi>${S.fmtMoney(entry.cents / 100)}</bdi> د.أ</strong>
+      <button class="icon-btn" data-deposit-remove="${entry.id}" aria-label="حذف سجل إيداع ${S.fmtMoney(entry.cents / 100)} دينار" title="حذف سجل الإيداع"><svg class="ico" aria-hidden="true"><use href="#i-close"/></svg></button>
+    </li>`).join('')}</ul>` : '<p class="lead">لسّه ما سجّلت إيداعات.</p>'}
+    <div class="sheet-actions"><button class="btn btn-red" id="historyAdd"><svg class="ico" aria-hidden="true"><use href="#i-plus"/></svg>سجّل إيداع</button><button class="btn btn-soft" data-close>سكّر</button></div>`, (sheet) => {
+    $('#historyAdd', sheet).onclick = openDeposit;
+    sheet.querySelectorAll('[data-deposit-remove]').forEach((button) => {
+      button.onclick = async () => {
+        if (!await accountChoice('تحذف سجل الإيداع؟', 'بينحذف السجل من الحصّالة، وبيتحدّث المستحق للإيداع. صافي التوفير ما بيتغيّر.', 'احذف السجل', 'احتفظ فيه')) return;
+        const next = structuredClone(state);
+        next.deposits = (next.deposits || []).filter((entry) => entry.id !== button.dataset.depositRemove);
+        if (commitSavings(next)) { openDepositHistory(); toast('انحذف سجل الإيداع'); }
+      };
+    });
+  });
+}
+
+// Show both registered replacements, including before the quit date.
 function renderToday() {
-  const card = $('#todayCard');
   const n = state.nrt;
   const p = state.patch;
-  const prep = isPrep();
-  const btn = $('#todayBtn');
-  if (p?.active && (!prep || patchPreload())) {
-    const wk = planWeek(state.quitAt);
-    const st = wk ? patchStepFor(p.steps, wk) : { ...p.steps[0], index: 0 };
-    card.hidden = !st;
-    if (!st) return;
+  $('#homeGum').hidden = !n?.active;
+  $('#homePatch').hidden = !p?.active;
+  $('#todayNotice').textContent = !n?.active && !p?.active
+    ? 'ما في بدائل مسجّلة حالياً. إذا بتستخدم بديل، أضفه من إعدادات البدائل حسب نشرة منتجك.'
+    : 'المخزون حسب العلب والاستخدام المسجّلين. التسجيل مش توصية بأخذ جرعة؛ اتبع نشرة منتجك وتوجيه الصيدلي.';
+  if (n?.active) {
+    $('#homeGumMg').textContent = `${n.mg} ملغ`;
+    $('#homeGumUsage').textContent = `سجّلت اليوم ${S.gumToday(state)} حبة · الحد المسجّل ${n.dailyMax}`;
+    $('#homeGumStock').textContent = n.packs.length ? `المتبقي عندك: ${S.gumStock(state)} حبة` : 'ما في علب مسجّلة؛ أضف العلبة لحساب المتبقي.';
+  }
+  if (p?.active) {
     const done = S.patchedToday(state);
-    $('#todayIco').src = 'assets/icons/patch.webp';
-    $('#todayK').textContent = 'لزقة اليوم';
-    $('#todayMain').textContent = `${st.mg} ملغ`;
-    btn.textContent = done ? 'حطيتها ✓' : 'حطيتها';
-    btn.setAttribute('aria-pressed', String(done));
-    btn.onclick = () => logPatch();
-    return;
+    $('#homePatchUsage').textContent = done ? 'سجّلت لزقة اليوم' : 'لسّه ما سجّلت لزقة اليوم';
+    $('#homePatchStock').textContent = p.packs.length ? `المتبقي عندك: ${S.patchStock(state)} لزقة` : 'ما في علب مسجّلة؛ أضف العلبة لحساب المتبقي.';
+    $('#homePatchLog').disabled = done;
+    $('#homePatchLog').textContent = done ? 'مسجّلة اليوم' : 'سجّل لزقة';
   }
-  if (n.active && !prep) {
-    card.hidden = false;
-    const today = S.gumToday(state);
-    $('#todayIco').src = 'assets/icons/gum.webp';
-    $('#todayK').textContent = 'علكة اليوم';
-    $('#todayMain').innerHTML = `<b>${today}</b> من ${n.dailyMax}`;
-    btn.innerHTML = '<svg class="ico" aria-hidden="true"><use href="#i-plus"/></svg>حبة';
-    btn.setAttribute('aria-pressed', 'false');
-    btn.onclick = (ev) => logGum(ev.currentTarget);
-    return;
-  }
-  card.hidden = true;
+}
+
+function openReplacementHelp(type) {
+  const card = $(type === 'gum' ? '#nrtCard' : '#patchCard');
+  const content = card.querySelector('.howto').cloneNode(true);
+  content.querySelector('summary').remove();
+  openSheet(`<h2>${type === 'gum' ? 'طريقة استخدام العلكة' : 'طريقة استخدام اللزقة'}</h2>
+    <div class="replacement-help">${content.innerHTML}</div>
+    <button class="btn btn-ink" data-close>تمام</button>`);
 }
 
 // ---------------------------------------------------------------- nicotine gum
@@ -210,7 +305,7 @@ function renderNRT() {
   $('#nrtMg').textContent = `${n.mg} ملغ`;
   const today = S.gumToday(state);
   setNum($('#nrtToday'), today);
-  $('#nrtOf').textContent = `من ${n.dailyMax} اليوم`;
+  $('#nrtOf').textContent = `الحد المسجّل ${n.dailyMax}`;
   const prog = $('#nrtRing .prog');
   prog.style.strokeDasharray = RING_C.toFixed(2);
   prog.style.strokeDashoffset = (RING_C * (1 - Math.min(1, today / n.dailyMax))).toFixed(2);
@@ -218,17 +313,17 @@ function renderNRT() {
 
   const last = n.logs.length ? Math.max(...n.logs) : null;
   $('#nrtLast').innerHTML = today >= n.dailyMax
-    ? '<strong style="color:var(--ember-deep)">وصلت الحد اليومي المكتوب على علبتك</strong>'
+    ? '<strong style="color:var(--ember-deep)">وصلت الحد المسجّل؛ راجع نشرة منتجك</strong>'
     : last ? `آخر حبة: <strong>قبل ${S.duration(Date.now() - last)}</strong>` : 'لسّا ما سجّلت ولا حبة';
   const stock = S.gumStock(state);
-  $('#nrtStock').innerHTML = `باقي بالعلبة: <strong>${stock} ${S.word(stock, 'حبة', 'حبات')}</strong>`;
+  $('#nrtStock').innerHTML = `المتبقي عندك: <strong>${stock} ${S.word(stock, 'حبة', 'حبات')}</strong>`;
 
   const tx = state.assessment ? buildReport(state.assessment).tx : null;
   const wk = planWeek(state.quitAt);
   let plan = '';
   if (tx?.form === 'gum' && tx.gumSchedule?.length > 1) {
     const st = gumStageFor(wk);
-    plan = wk === 0 ? `بتبلّش يوم الترك: ${gumStageFor(1).text}.` : st ? `خطة الأسبوع ${wk}: ${st.text}.` : 'خلصت خطة العلكة. وقّفها إذا ما عدت محتاجها.';
+    plan = wk === 0 ? `بتبلّش يوم الإقلاع: ${gumStageFor(1).text}.` : st ? `خطة الأسبوع ${wk}: ${st.text}.` : 'خلصت خطة العلكة. وقّفها إذا ما عدت محتاجها.';
   } else if (tx?.form === 'both') plan = 'مع اللزقة: حبة وقت الرغبة القوية بس.';
   $('#nrtPlan').hidden = !plan;
   $('#nrtPlan').textContent = plan;
@@ -265,15 +360,15 @@ function renderPatch() {
   const stock = S.patchStock(state);
   const stockTxt = stock ? ` باقي عندك ${stock} ${S.word(stock, 'لزقة', 'لزقات')}.` : ' لما تشتري علبة اضغط «اشتريت علبة».';
   $('#patchNote').textContent = preload
-    ? `تحميل مسبق: لزقة ${p.steps[0].mg} ملغ كل يوم لحد يوم الترك، وإنت لسّا عم تخفّف.${stockTxt}`
+    ? `تحميل مسبق: لزقة ${p.steps[0].mg} ملغ كل يوم لحد يوم الإقلاع، وإنت لسّا عم تخفّف.${stockTxt}`
     : wk === 0
-    ? `بتبلّش يوم الترك بلزقة ${p.steps[0].mg} ملغ.${stockTxt}`
+    ? `بتبلّش يوم الإقلاع بلزقة ${p.steps[0].mg} ملغ.${stockTxt}`
     : st ? `الأسبوع ${wk} من ${total}: لزقة ${st.mg} ملغ لآخر الأسبوع ${st.endsWeek}.${stockTxt}` : 'خلصت خطة اللزقات. مبروك!';
   const btn = $('#patchBtn');
   const done = S.patchedToday(state);
   btn.disabled = !st;
   btn.setAttribute('aria-pressed', String(done));
-  btn.textContent = !st ? (wk === 0 ? 'بتبلّش يوم الترك' : 'خلصت الخطة') : done ? 'حطيتها اليوم ✓' : 'حطيت لزقة اليوم';
+  btn.textContent = !st ? (wk === 0 ? 'بتبلّش يوم الإقلاع' : 'خلصت الخطة') : done ? 'حطيتها اليوم ✓' : 'حطيت لزقة اليوم';
 }
 
 function logPatch() {
@@ -311,6 +406,8 @@ function cutWindow(step) {
 function renderCut() {
   const card = $('#cutCard');
   const r = currentPlan();
+  $('#planReview').hidden = !r?.reviewReason;
+  $('#planReviewReason').textContent = r?.reviewReason || '';
   const step = r && r.approach !== 'abrupt' && isPrep() ? stepAt(r.schedule) : null;
   card.hidden = !step;
   if (!step) return;
@@ -353,15 +450,15 @@ function renderApproach() {
   card.hidden = !r;
   if (!r) return;
   const ap = APPROACHES[r.approach];
-  $('#approachTitle').textContent = ap.t;
-  $('#approachDesc').textContent = ap.d;
+  $('#approachTitle').textContent = r.reviewReason ? 'راجع موعد الإقلاع' : ap.t;
+  $('#approachDesc').textContent = r.reviewReason || ap.d;
   const now = Date.now();
   const rows = r.schedule.map((s) => {
     const cls = now >= s.toAt ? 'done' : now >= s.fromAt ? 'now' : '';
     const what = s.targets.map(targetText).join(' · ');
     return `<div class="${cls}"><span>${s.label}</span><b>${what}</b>${s.nic != null ? `<small>ليكويد ${s.nic} ملغ/مل</small>` : ''}</div>`;
   });
-  rows.push(`<div class="quit ${now >= state.quitAt ? 'done' : ''}"><span>${r.future ? 'يوم الترك' : 'تركت'}</span><b>${dateAr(state.quitAt)}</b></div>`);
+  rows.push(`<div class="quit ${now >= state.quitAt ? 'done' : ''}"><span>${r.future ? 'يوم الإقلاع' : 'تركت'}</span><b>${dateAr(state.quitAt)}</b></div>`);
   $('#approachSched').innerHTML = rows.join('');
   $('#approachMeds').innerHTML = r.meds.map((m) => `<li>${m}</li>`).join('');
 }
@@ -375,7 +472,7 @@ function renderPlan() {
   const r = buildReport(state.assessment);
   const wk = planWeek(state.quitAt);
   const form = r.safe.stop.length ? 'استشير دكتور أولاً' : FORM_LABEL[r.tx.form];
-  const stage = wk === 0 ? 'قبل يوم الترك' : wk <= 12 ? `الأسبوع ${wk} من 12` : 'بعد الـ 12 أسبوع';
+  const stage = r.reviewReason ? 'موعد الإقلاع بحاجة مراجعة' : wk === 0 ? 'قبل يوم الإقلاع' : `الأسبوع ${wk} بعد الإقلاع`;
   $('#planSub').textContent = `${stage} · اعتماد ${['منخفض', 'منخفض', 'متوسط', 'عالي'][r.dep.level]} · ${form}`;
   $('#planBtn').textContent = 'افتح التقرير';
 }
@@ -385,7 +482,7 @@ const PREP = [
   ['tell', 'خبّر 2–3 ناس قريبين منك إنك رح تترك'],
   ['clean', 'ليلة الترك: شيل السجاير والولاعات والطفّايات والفيب'],
   ['plan', 'اقرأ خطتك للحظات الصعبة بالتقرير'],
-  ['first', 'قرر شو رح تعمل أول ساعة بيوم الترك'],
+  ['first', 'قرر شو رح تعمل أول ساعة بيوم الإقلاع'],
 ];
 
 function renderPrep() {
@@ -416,13 +513,7 @@ function answersFromState(s) {
 
 // the intake interview, then the report; keeps history when retaken
 async function intake(prev = null) {
-  const onLink = !prev && Sync.enabled() ? (code) => Sync.claimCode(code) : null;
-  const a = await runAssessment(prev ? (prev.assessment || answersFromState(prev)) : {}, { onLink });
-  if (a.__linked) {
-    state = S.load();
-    if (clockEls.d) renderAll();
-    return;
-  }
+  const a = await runAssessment(prev ? (prev.assessment || answersFromState(prev)) : { name: Auth.firstName(currentUser) });
   state = S.createFromAssessment(a, buildReport(a).tx, prev);
   persist();
   if (clockEls.d) renderAll();
@@ -468,7 +559,7 @@ function renderHealth() {
   setNum($('#bodyDone'), doneN);
   $('#bodyTotal').textContent = `من ${list.length}`;
   $('#bodyNext').textContent = next ? next.name : 'خلّصت كل المحطات';
-  $('#bodyLeft').textContent = next ? (isPrep() ? 'بتبلّش من يوم الترك' : `باقي ${S.duration(next.left)}`) : '';
+  $('#bodyLeft').textContent = next ? (isPrep() ? 'بتبلّش من يوم الإقلاع' : `باقي ${S.duration(next.left)}`) : '';
   $('#miles').innerHTML = list.map((m) => {
     const done = m.at <= e;
     const now = !done && next && m === list.find((x) => x.at === next.at && x.text === next.text);
@@ -507,13 +598,6 @@ function renderCravings() {
 }
 
 // ---------------------------------------------------------------- goal
-function netPerDay() {
-  const recent = state.nrt.active
-    ? state.nrt.logs.filter((t) => t > Date.now() - 3 * S.DAY).length / 3 * S.gumPrice(state)
-    : 0;
-  return Math.max(0.01, S.dailyCost(state) - recent);
-}
-
 function renderGoal() {
   const body = $('#goalBody');
   const g = state.goal;
@@ -522,14 +606,14 @@ function renderGoal() {
     $('#goalSet').onclick = openGoal;
     return;
   }
-  const net = Math.max(0, S.money(state).net);
+  const net = S.savings(state).depositedCents / 100;
   const p = Math.min(1, net / g.amount);
   const left = g.amount - net;
   body.innerHTML = `
     <p class="card-sub" style="margin:-6px 0 6px">${esc(g.title)}</p>
     <div class="goal-amt"><span class="n" id="goalN">0</span><span class="of">من ${S.fmtMoney(g.amount)} د.أ</span></div>
     <div class="bar red"><i style="--p:${p.toFixed(4)}"></i></div>
-    <p class="eta">${left <= 0 ? 'وصلت هدفك. كافئ حالك، بتستاهل.' : `بتوصله بعد ${S.duration((left / netPerDay()) * S.DAY)} تقريباً`}</p>
+    <p class="eta">${left <= 0 ? 'وصلت هدفك. كافئ حالك، بتستاهل.' : `باقي إيداع ${S.fmtMoney(left)} د.أ لهدفك`}</p>
     <button class="btn btn-soft" id="goalEdit" style="margin-top:12px">عدّل الهدف</button>`;
   setNum($('#goalN'), net, 2);
   $('#goalEdit').onclick = openGoal;
@@ -563,6 +647,8 @@ function renderHeader() {
   const h = new Date().getHours();
   $('#greet').textContent = h >= 4 && h < 12 ? 'صباح الخير' : 'مسا الخير';
   $('#name').textContent = state.name || 'بطل';
+  $('#openAccount').textContent = currentUser ? (Auth.firstName(currentUser) || state.name || 'ح').slice(0, 1) : 'حسابي';
+  $('#openAccount').setAttribute('aria-label', currentUser ? 'حسابي' : 'تسجيل الدخول');
 }
 
 function renderAll() {
@@ -604,10 +690,17 @@ function toast(msg, actLabel, act) {
 
 // ---------------------------------------------------------------- sheets
 let sheetOpener = null;
+let sheetCloseTimer = 0;
+let sheetOverflow = '';
 function openSheet(html, mount) {
   const sheet = $('#sheet');
   const bd = $('#backdrop');
   sheetOpener = document.activeElement;
+  clearTimeout(sheetCloseTimer);
+  if (sheet.hidden) sheetOverflow = document.body.style.overflow;
+  document.body.style.overflow = 'hidden';
+  document.querySelector('.app').inert = true;
+  document.querySelector('.tabbar').inert = true;
   sheet.innerHTML = `<div class="grab"></div>${html}`;
   sheet.hidden = false;
   bd.hidden = false;
@@ -617,6 +710,12 @@ function openSheet(html, mount) {
   }));
   sheet.querySelectorAll('[data-close]').forEach((b) => { b.onclick = closeSheet; });
   mount?.(sheet);
+  sheet.onkeydown = (ev) => {
+    if (ev.key !== 'Tab') return;
+    const items = [...sheet.querySelectorAll('input, button, select, summary, a[href]')].filter((el) => !el.disabled && el.getClientRects().length);
+    if (ev.shiftKey && document.activeElement === items[0]) { ev.preventDefault(); items.at(-1)?.focus(); }
+    else if (!ev.shiftKey && document.activeElement === items.at(-1)) { ev.preventDefault(); items[0]?.focus(); }
+  };
   setTimeout(() => sheet.querySelector('input, button:not(.danger), select')?.focus({ preventScroll: true }), 60);
 }
 
@@ -626,7 +725,10 @@ function closeSheet() {
   if (sheet.hidden) return;
   sheet.classList.remove('open');
   bd.classList.remove('open');
-  setTimeout(() => { sheet.hidden = true; bd.hidden = true; sheet.innerHTML = ''; }, 450);
+  document.querySelector('.app').inert = false;
+  document.querySelector('.tabbar').inert = false;
+  document.body.style.overflow = sheetOverflow;
+  sheetCloseTimer = setTimeout(() => { sheet.hidden = true; bd.hidden = true; sheet.innerHTML = ''; }, 450);
   sheetOpener?.focus?.({ preventScroll: true });
 }
 
@@ -643,9 +745,10 @@ function num(form, name, fallback) {
 
 function openSettings() {
   const s = state;
-  const h = s.habits;
+  const defaults = S.createState().habits;
+  const h = Object.fromEntries(Object.entries(s.habits).map(([kind, values]) => [kind, { ...defaults[kind], ...Object.fromEntries(Object.entries(values).filter(([, value]) => value != null)) }]));
   const field = (label, name, value, step = 'any', extra = '') =>
-    `<label class="field" ${extra}>${label}<input type="number" inputmode="decimal" min="0" step="${step}" name="${name}" value="${value}"></label>`;
+    `<label class="field" ${extra}>${label}<input type="number" inputmode="decimal" min="0" step="${step}" name="${name}" value="${esc(value)}"></label>`;
   const kinds = Object.entries(S.VAPE_KINDS)
     .map(([k, v]) => `<option value="${k}" ${h.vape.kind === k ? 'selected' : ''}>${v.label}</option>`).join('');
   openSheet(`
@@ -654,15 +757,16 @@ function openSettings() {
     <form class="form" id="setForm" novalidate>
       <fieldset class="fs"><legend>أجهزتك</legend>
         <p class="sync-line" id="syncLine"><span class="sync-dot" data-s="${Sync.getStatus()}"></span><span>${SYNC_LABEL[Sync.getStatus()] || ''}</span></p>
+        ${currentUser ? '<p class="card-sub">سجّل دخول بنفس الحساب على جهازك التاني.</p>' : `
         <div class="row2">
           <button type="button" class="btn btn-ink" id="linkMake" ${Sync.enabled() ? '' : 'disabled'}>اربط جهاز تاني</button>
           <button type="button" class="btn btn-soft" id="linkClaim" ${Sync.enabled() ? '' : 'disabled'}>عندي رمز</button>
         </div>
-        <div id="linkArea"></div>
+        <div id="linkArea"></div>`}
       </fieldset>
       <fieldset class="fs"><legend>إنت</legend>
         <label class="field">اسمك<input name="name" value="${esc(s.name)}" maxlength="24" autocomplete="given-name"></label>
-        <label class="field">إيمتى تركت؟<input type="datetime-local" name="quitAt" value="${toLocalInput(s.quitAt)}" max="${toLocalInput(Date.now())}"></label>
+        <label class="field">يوم الإقلاع<input type="datetime-local" name="quitAt" value="${toLocalInput(s.quitAt)}" required></label>
       </fieldset>
       <fieldset class="fs"><legend>شو كنت تستعمل؟</legend>
         <div class="toggles">
@@ -696,12 +800,13 @@ function openSettings() {
         <button class="btn btn-red" type="submit">احفظ</button>
         <button class="btn btn-soft" type="button" data-close>إلغاء</button>
         <button class="btn btn-line" type="button" id="retake">أعد مقابلة الإقلاع</button>
-        <button class="danger" type="button" id="resetAll">امسح كل بياناتي وابدأ من جديد</button>
+        ${!currentUser ? '<button class="danger" type="button" id="resetAll">امسح كل بياناتي وابدأ من جديد</button>' : ''}
       </div>
     </form>`, (sheet) => {
     const f = $('#setForm', sheet);
     const area = $('#linkArea', sheet);
     let countdown = 0;
+    if (!currentUser) {
     $('#linkMake', sheet).onclick = async () => {
       clearInterval(countdown);
       area.innerHTML = '<p class="card-sub">عم جهّز الرمز…</p>';
@@ -745,6 +850,7 @@ function openSettings() {
         }
       };
     };
+    }
     f.addEventListener('change', (ev) => {
       const m = ev.target.name?.match(/^h_(\w+)$/);
       if (m) sheet.querySelector(`[data-h="${m[1]}"]`)?.toggleAttribute('data-off', !ev.target.checked);
@@ -758,7 +864,7 @@ function openSettings() {
     };
     $('#retake', sheet).onclick = () => { closeSheet(); setTimeout(() => intake(state), 350); };
     const reset = $('#resetAll', sheet);
-    reset.onclick = () => {
+    if (reset) reset.onclick = () => {
       if (!reset.dataset.armed) {
         reset.dataset.armed = '1';
         reset.textContent = 'متأكد؟ اضغط كمان مرة للمسح';
@@ -766,6 +872,7 @@ function openSettings() {
       }
       state = S.reset();
       Sync.forget();
+      Sync.initSync(syncOptions());
       closeSheet();
       setTimeout(() => intake(null), 350);
     };
@@ -775,7 +882,9 @@ function openSettings() {
       if (!active.length) { toast('اختار شي واحد على الأقل كنت تستعمله'); return; }
       const q = new Date(f.elements.quitAt.value).getTime();
       state.name = f.elements.name.value.trim() || state.name;
-      if (Number.isFinite(q)) state.quitAt = Math.min(q, Date.now());
+      if (!Number.isFinite(q) || q <= 0) { toast('اختار يوم إقلاع صحيح'); return; }
+      state.quitAt = q;
+      if (state.assessment) state.assessment = { ...state.assessment, quitAt: q, quitMode: q > Date.now() ? 'future' : 'done' };
       Object.keys(S.HABITS).forEach((k) => { state.habits[k].active = active.includes(k); });
       Object.assign(state.habits.cig, {
         perDay: num(f, 'cig_perDay', h.cig.perDay), packPrice: num(f, 'cig_packPrice', h.cig.packPrice),
@@ -808,7 +917,7 @@ function openGoal() {
     <p class="lead">شو بدك تشتري من المصاري اللي كانت تروح عالدخان؟</p>
     <form class="form" id="goalForm" novalidate>
       <label class="field">الهدف<input name="title" value="${esc(g.title)}" maxlength="40" placeholder="مثلاً: سفرة للعقبة"></label>
-      <label class="field">المبلغ (د.أ)<input name="amount" type="number" inputmode="decimal" min="1" step="1" value="${g.amount}"></label>
+      <label class="field">المبلغ (د.أ)<input name="amount" type="number" inputmode="decimal" min="1" step="1" value="${esc(g.amount)}"></label>
       <div class="sheet-actions">
         <button class="btn btn-red" type="submit">احفظ الهدف</button>
         ${state.goal ? '<button class="btn btn-soft" type="button" id="goalDel">شيل الهدف</button>' : '<button class="btn btn-soft" type="button" data-close>إلغاء</button>'}
@@ -833,7 +942,7 @@ function openGoal() {
 
 function openSlip() {
   openSheet(`
-    <h2>زلّة مش فشل</h2>
+    <h2>زلّيت؟ عادي.</h2>
     <p class="lead">أغلب اللي تركوا زلّوا مرة أو أكتر قبل ما يثبتوا. المهم شو بتعمل هلأ.</p>
     <div class="sheet-actions">
       <button class="btn btn-ink" id="slipKeep">زلّة وحدة، وبكمّل</button>
@@ -854,8 +963,7 @@ function openSlip() {
         r.textContent = 'متأكد؟ العدّاد رح يبلّش من هلأ';
         return;
       }
-      state.slips.push({ at: Date.now(), reset: true });
-      state.quitAt = Date.now();
+      S.restartJourney(state);
       persist();
       closeSheet();
       renderAll();
@@ -926,13 +1034,210 @@ function showPage(name) {
   cigarette?.setMode(name === 'home' ? heroMode() : 'off');
 }
 
+const syncOptions = () => ({ userId: currentUser?.id, getState: () => state, setState: applyRemote, onStatus: showSync });
+
+function accountChoice(title, message, yes, no) {
+  return new Promise((resolve) => {
+    const dialog = document.createElement('dialog');
+    dialog.className = 'account-dialog';
+    dialog.setAttribute('aria-labelledby', 'accountDecisionTitle');
+    dialog.innerHTML = `<img src="assets/icons/shield.webp" width="72" height="72" alt="">
+      <h2 id="accountDecisionTitle">${esc(title)}</h2><p>${esc(message)}</p>
+      <div class="sheet-actions"><button class="btn btn-red" data-yes>${esc(yes)}</button><button class="btn btn-soft" data-no>${esc(no)}</button></div>`;
+    document.body.appendChild(dialog);
+    const finish = (answer) => { dialog.close(); dialog.remove(); resolve(answer); };
+    dialog.querySelector('[data-yes]').onclick = () => finish(true);
+    dialog.querySelector('[data-no]').onclick = () => finish(false);
+    dialog.addEventListener('cancel', (ev) => { ev.preventDefault(); finish(false); });
+    dialog.showModal();
+  });
+}
+
+async function openAccount() {
+  if (!currentUser) {
+    const result = await Auth.runAuth({ name: state?.name, allowLocal: true });
+    if (result?.user) location.reload();
+    return;
+  }
+  const details = currentUser.user_metadata || {};
+  const iso = details.phone_country || 'JO';
+  openSheet(`<div class="account-heading"><span class="account-avatar">${esc((Auth.firstName(currentUser) || 'ح').slice(0, 1))}</span>
+    <div><h2>حسابي</h2><p class="account-email" dir="ltr">${esc(currentUser.email || '')}</p></div>
+    <button class="icon-btn" data-close aria-label="إغلاق"><svg class="ico"><use href="#i-close"/></svg></button></div>
+    <form class="form account-form" novalidate>
+      <label class="field">اسمك<input name="full_name" autocomplete="name" maxlength="40" value="${esc(details.full_name || details.name || state.name)}"></label>
+      ${Auth.phoneField('profilePhone', iso, Auth.nationalPart(details.phone, iso))}
+      <p class="onb-err" role="alert"></p><button class="btn btn-red" type="submit">احفظ التعديلات</button>
+    </form>
+    <div class="account-actions">
+      <p class="sync-line" id="syncLine"><span class="sync-dot" data-s="${Sync.getStatus()}"></span><span>${SYNC_LABEL[Sync.getStatus()]}</span></p>
+      <button class="btn btn-soft" id="accountPassword">غيّر كلمة السر</button>
+      <button class="btn btn-line" id="accountLogout">سجّل خروج</button>
+      <button class="danger" id="accountDelete">احذف حسابي وبياناتي</button>
+      <nav class="legal-links" aria-label="الصفحات القانونية"><a href="privacy.html" target="_blank" rel="noopener">الخصوصية</a><a href="terms.html" target="_blank" rel="noopener">الشروط</a><a href="delete-account.html" target="_blank" rel="noopener">عن حذف الحساب</a></nav>
+    </div>`, (sheet) => {
+    const form = sheet.querySelector('form');
+    const err = sheet.querySelector('[role="alert"]');
+    Auth.wirePhone(form);
+    form.onsubmit = async (ev) => {
+      ev.preventDefault();
+      const name = form.elements.full_name.value.trim();
+      const phone = Auth.readPhone(form);
+      if (!name) { err.textContent = 'اكتب اسمك.'; form.elements.full_name.focus(); return; }
+      if (phone === false) { err.textContent = 'رقم التلفون مش مزبوط.'; form.elements.phone.focus(); return; }
+      const btn = form.querySelector('[type="submit"]');
+      btn.disabled = true;
+      err.textContent = '';
+      try {
+        currentUser = await Auth.updateProfile({ full_name: name, phone: phone?.e164 || '', phone_country: phone?.iso || iso });
+        state.name = name.split(/\s+/)[0];
+        persist();
+        renderHeader();
+        toast('انحفظت معلومات حسابك');
+      } catch (e) { err.textContent = Auth.authError(e); }
+      btn.disabled = false;
+    };
+    $('#accountPassword', sheet).onclick = async (ev) => {
+      const btn = ev.currentTarget;
+      btn.disabled = true;
+      try { await Auth.sendPasswordReset(currentUser.email); toast('تفقد إيميلك لرسالة تغيير كلمة السر'); }
+      catch (e) { err.textContent = Auth.authError(e); }
+      btn.disabled = false;
+    };
+    $('#accountLogout', sheet).onclick = async (ev) => {
+      const btn = ev.currentTarget;
+      btn.disabled = true;
+      leavingAccount = true;
+      try {
+        const saved = await Sync.flush();
+        if (!saved && !await accountChoice('في تعديلات لسه ما تزامنت', 'بتضل نسخة محفوظة على هالجهاز، وبتتزامن لما ترجع تسجّل دخول بنفس الحساب.', 'سجّل خروج', 'خلّيني هون')) return;
+        Sync.stop();
+        await Auth.signOut();
+        // A synced journey can be restored after login; do not leave health data
+        // behind on a shared device. Unsynced copies are kept only after consent.
+        if (saved) { S.reset(); Sync.forget(); }
+        location.reload();
+      } catch (e) { err.textContent = Auth.authError(e); await Sync.initSync(syncOptions()); }
+      finally { leavingAccount = false; btn.disabled = false; }
+    };
+    $('#accountDelete', sheet).onclick = async (ev) => {
+      const btn = ev.currentTarget;
+      if (!await accountChoice('تحذف حسابك نهائياً؟', 'رح ينحذف حسابك وخطتك وسجلاتك المحفوظة فيه. ما بنقدر نرجعهم بعد الحذف.', 'احذف حسابي نهائياً', 'احتفظ بحسابي')) return;
+      btn.disabled = true;
+      leavingAccount = true;
+      Sync.stop();
+      try {
+        await Auth.deleteAccount();
+        S.reset();
+        Sync.forget();
+        location.reload();
+      } catch (e) { err.textContent = Auth.authError(e); await Sync.initSync(syncOptions()); }
+      finally { leavingAccount = false; btn.disabled = false; }
+    };
+  });
+}
+
+// The interview answers wait here while the person makes an account, so they
+// survive the trip to Google and back, or closing the app on the sign-up screen.
+const PENDING = 'tafiha.pending';
+function loadPending() {
+  try {
+    const a = JSON.parse(localStorage.getItem(PENDING) || 'null');
+    return a ? assertAssessment(a) : null;
+  } catch { clearPending(); return null; }
+}
+function savePending(a) { try { localStorage.setItem(PENDING, JSON.stringify(a)); } catch { /* the copy in memory still works */ } }
+function clearPending() { try { localStorage.removeItem(PENDING); } catch { /* ignore */ } }
+
+// First visit: the interview, then an account (needed to see the report).
+// «عندي حساب» on the first screen goes straight to signing in.
+async function welcome(error) {
+  let answers = loadPending();
+  let mode = answers ? 'gate' : null;
+  for (;;) {
+    if (!answers && mode !== 'login') {
+      const r = await runAssessment({}, { onLogin: true });
+      if (r.__login) mode = 'login';
+      else { answers = r; savePending(answers); mode = 'gate'; }
+    }
+    const result = await Auth.runAuth({ mode, name: answers?.name, error, onRedirect: () => answers && savePending(answers) });
+    error = '';
+    if (result?.user) return result.user;
+    mode = null; // left the sign-in screen: back to the interview
+  }
+}
+
 async function boot() {
   if ('serviceWorker' in navigator && location.protocol !== 'file:') {
     navigator.serviceWorker.register('sw.js').catch(() => {});
   }
-  Sync.initSync({ getState: () => state, setState: applyRemote, onStatus: showSync });
-  if (!state) await intake(null);
+  const guest = S.loadGuest();
+  const query = new URL(location.href);
+  const recovery = query.searchParams.get('r') === 'reset' || location.hash.includes('type=recovery');
+  const callbackError = query.searchParams.has('error') || /error=/.test(location.hash);
+  if (Auth.configured()) {
+    await Auth.onAuthChange((event, session) => {
+      if ((!booted && !accountBound) || leavingAccount) return;
+      if ((session?.user?.id || null) !== (currentUser?.id || null)) {
+        document.body.classList.add('booting');
+        Sync.stop();
+        location.reload();
+      } else if (session?.user) currentUser = session.user;
+    });
+    const session = await Auth.session();
+    currentUser = session?.user || null;
+    for (const param of ['r', 'code', 'error', 'error_description', 'error_code']) query.searchParams.delete(param);
+    if (location.hash.includes('access_token') || location.hash.includes('error=')) query.hash = '';
+    history.replaceState(null, '', query.pathname + query.search + query.hash);
+    if (recovery && currentUser) {
+      const result = await Auth.runAuth({ mode: 'recovery' });
+      currentUser = result.user;
+    }
+    if (!currentUser) {
+      const linkError = callbackError || recovery ? 'الرابط ما اشتغل أو خلص وقته. سجّل دخول أو اطلب رسالة جديدة.' : '';
+      if (guest) {
+        // a journey on this device from before accounts goes into the account;
+        // without internet it keeps working here until the next open
+        const result = await Auth.runAuth({ mode: 'required', name: guest.name, allowLocal: !navigator.onLine, error: linkError });
+        currentUser = result?.user || null;
+      } else {
+        currentUser = await welcome(linkError);
+      }
+    }
+  }
+  S.selectAccount(currentUser?.id);
+  accountBound = true;
+  state = S.load();
+  let synced = await Sync.initSync(syncOptions());
+  // An unavailable server is not an empty account. Never overwrite an unseen journey.
+  while (currentUser && !state && !synced) {
+    const retry = await accountChoice('ما قدرنا نجيب رحلتك', 'تأكد من النت، وبنرجع نحاول نجيب البيانات المحفوظة بحسابك.', 'حاول كمان مرة', 'سجّل خروج');
+    if (!retry) { await Auth.signOut(); location.reload(); return; }
+    synced = await Sync.initSync(syncOptions());
+  }
+  if (currentUser && guest && !S.guestDismissed()) {
+    const useGuest = await accountChoice('تضيف رحلتك الموجودة؟', `في رحلة محفوظة على هالجهاز باسم ${guest.name || 'بدون اسم'}. بتحب تضيفها لحساب ${currentUser.email || Auth.firstName(currentUser)}؟`, 'أضف رحلتي للحساب', 'كمّل ببيانات الحساب');
+    if (useGuest) {
+      state = merge(state, guest);
+      if (!S.save(state)) throw new Error('local-storage');
+      await Sync.importLegacy(Sync.getLegacyKey());
+      persist();
+      if (S.retireGuest()) Sync.retireLegacyLink();
+    } else S.dismissGuest();
+  }
+  const answers = currentUser && loadPending();
+  if (answers) {
+    // the interview from before signing up: now the plan is made and the report shown
+    if (!answers.name) answers.name = Auth.firstName(currentUser);
+    state = S.createFromAssessment(answers, buildReport(answers).tx, state);
+    persist();
+    clearPending();
+    document.body.classList.remove('booting');
+    await openReport(answers, { first: true });
+  } else if (!state) await intake(null);
+  document.body.classList.remove('booting');
   start();
+  booted = true;
 }
 
 function start() {
@@ -962,12 +1267,16 @@ function start() {
     });
   });
 
-  let lastMinute = new Date().getMinutes();
+  let lastMinute = Math.floor(Date.now() / 60000);
+  let wasPrep = isPrep();
   setInterval(() => {
     tickClock();
-    const m = new Date().getMinutes();
-    if (m !== lastMinute) {
+    renderStats();
+    const m = Math.floor(Date.now() / 60000);
+    const prep = isPrep();
+    if (m !== lastMinute || prep !== wasPrep) {
       lastMinute = m;
+      wasPrep = prep;
       renderAll();
     }
   }, 1000);
@@ -996,19 +1305,30 @@ function start() {
     b.innerHTML = label;
   };
   $('#gumBtn').onclick = (ev) => logGum(ev.currentTarget);
+  $('#todaySettings').onclick = openSettings;
+  $('#savingsDate').onclick = openSettings;
+  $('#homeGumLog').onclick = (ev) => logGum(ev.currentTarget);
+  $('#homePatchLog').onclick = logPatch;
+  $('#homeGumHow').onclick = () => openReplacementHelp('gum');
+  $('#homePatchHow').onclick = () => openReplacementHelp('patch');
+  $('#homeGumPack').onclick = () => $('#gumPackBtn').click();
+  $('#homePatchPack').onclick = () => $('#patchPackBtn').click();
   $('#gumPackBtn').onclick = () => {
     state.nrt.packs.push(Date.now());
     persist();
     renderNRT();
     toast(`انضافت علبة. صار عندك ${S.gumStock(state)} حبة`);
+    renderToday();
   };
   $('#patchBtn').onclick = logPatch;
   $('#cutBtn').onclick = logCut;
+  $('#reviewPlanBtn').onclick = () => intake(state);
   $('#patchPackBtn').onclick = () => {
     state.patch.packs.push(Date.now());
     persist();
     renderPatch();
     toast(`انضافت علبة. صار عندك ${S.patchStock(state)} لزقة`);
+    renderToday();
   };
   $('#planBtn').onclick = () => (state.assessment ? openReport(state.assessment) : intake(state));
   $('#prepList').addEventListener('click', (ev) => {
@@ -1020,6 +1340,9 @@ function start() {
     renderPrep();
   });
   $('#openSettings').onclick = openSettings;
+  $('#depositAdd').onclick = openDeposit;
+  $('#depositHistory').onclick = openDepositHistory;
+  $('#openAccount').onclick = openAccount;
   $('#slipBtn').onclick = openSlip;
   $('#shareBtn').onclick = openShare;
   $('#inviteBtn').onclick = invite;
@@ -1028,4 +1351,9 @@ function start() {
 
 }
 
-boot();
+boot().catch(() => {
+  Sync.stop();
+  const status = document.getElementById('bootStatus');
+  status.innerHTML = '<p>ما قدرنا نفتح رحلتك. بياناتك المحفوظة لسه موجودة.</p><button class="btn btn-red" id="bootRetry">حاول كمان مرة</button>';
+  document.getElementById('bootRetry').onclick = () => location.reload();
+});

@@ -12,9 +12,9 @@ const START = new Date(2026, 9, 2, 10, 0).getTime(); // Fri 2 Oct, 10:00
 
 // choosing an approach
 eq('already quit → abrupt', chooseApproach({ quitMode: 'done', approach: 'gradual-long' }), 'abrupt');
-eq('picked short gradual', chooseApproach({ quitMode: 'future', approach: 'gradual-short' }), 'gradual-short');
+eq('picked short gradual', chooseApproach({ products: ['cig'], quitMode: 'future', approach: 'gradual-short' }), 'gradual-short');
 eq('cytisine forces abrupt (quit within 5 days)', chooseApproach({ quitMode: 'future', approach: 'gradual-long', rx: 'cytisine' }), 'abrupt');
-eq('advise, low confidence → cut down over 12 weeks', chooseApproach({ quitMode: 'future', approach: 'advise', confidence: 3 }), 'gradual-long');
+eq('low confidence never automatically delays quitting 12 weeks', chooseApproach({ quitMode: 'future', approach: 'advise', confidence: 3 }), 'abrupt');
 eq('advise, confident → abrupt', chooseApproach({ quitMode: 'future', approach: 'advise', confidence: 7 }), 'abrupt');
 
 // quit day of a gradual plan
@@ -22,23 +22,23 @@ eq('short plan quits on day 15 at 08:00', new Date(gradualQuitAt('gradual-short'
 eq('long plan quits after 12 weeks', Math.round((gradualQuitAt('gradual-long', START) - new Date(2026, 9, 2).getTime()) / DAY * 10) / 10, 84.3);
 
 // cigarettes: 20 a day
-const cig = { products: ['cig'], cig_perDay: 20 };
+const cig = { products: ['cig'], cig_perDay: 20, rx: 'varenicline' };
 eq('short: half, then a quarter (Lindson-Hawley)', reductionSchedule(cig, 'gradual-short', START).map((s) => s.targets[0].value), [10, 5]);
 const long = reductionSchedule(cig, 'gradual-long', START).map((s) => s.targets[0].value);
 eq('long: weekly allowances', long, [18, 15, 13, 10, 9, 8, 7, 5, 4, 3, 2, 2]);
 eq('long: 50% by week 4 (varenicline label)', long[3], 10);
 eq('long: a further 50% by week 8', long[7], 5);
-eq('never below 1 a day before the quit day', Math.min(...reductionSchedule({ products: ['cig'], cig_perDay: 4 }, 'gradual-long', START).map((s) => s.targets[0].value)), 1);
+eq('never below 1 a day before the quit day', Math.min(...reductionSchedule({ ...cig, cig_perDay: 4 }, 'gradual-long', START).map((s) => s.targets[0].value)), 1);
 
 // vape: sessions a day and nicotine strength
 const vape = { products: ['vape'], vp_times: '20-29', vp_kind: 'liquid', vp_nicotine: 20 };
 const vs = reductionSchedule(vape, 'gradual-long', START);
-eq('vape sessions week 1 (25 → 22)', vs[0].targets[0].value, 22);
-eq('liquid strength steps every 3 weeks', [vs[0].nic, vs[3].nic, vs[6].nic, vs[9].nic], [20, 12, 6, 3]);
-eq('disposables keep strength (not refillable)', reductionSchedule({ ...vape, vp_kind: 'disposable' }, 'gradual-long', START)[5].nic, null);
+eq('no cigarette-derived 12-week vape schedule', vs, []);
+eq('no cigarette-derived two-week vape schedule', reductionSchedule(vape, 'gradual-short', START), []);
+eq('no generic long plan without varenicline', reductionSchedule({ ...cig, rx: 'none' }, 'gradual-long', START), []);
 
 // argileh: heads a week
-eq('argileh heads per week', reductionSchedule({ products: ['argileh'], ar_perWeek: 3 }, 'gradual-long', START).map((s) => s.targets[0].value), [3, 3, 2, 2, 2, 2, 1, 1, 1, 1, 1, 1]);
+eq('no cigarette-derived argileh schedule', reductionSchedule({ products: ['argileh'], ar_perWeek: 3 }, 'gradual-long', START), []);
 
 // which step applies today
 const sched = reductionSchedule(cig, 'gradual-short', START);
@@ -48,6 +48,15 @@ eq('after the last step: none (quit day)', stepAt(sched, START + 15 * DAY), null
 
 // treatment details
 const base = { products: ['cig'], cig_perDay: 25, cig_packSize: 20, cig_packPrice: 2.85, ftnd_ttfc: 'more', ftnd_hate: 'other', conditions: [], meds: [], nrt_now: 'none', nrt_pref: 'gum', quitMode: 'future', assessedAt: START, quitAt: START + 7 * DAY };
+const low = buildReport({ ...base, approach: 'advise', confidence: 0 }, START);
+eq('low confidence preserves chosen quit date', low.quitAt, base.quitAt);
+eq('low confidence adds support referral', low.refer, true);
+const old = buildReport({ ...base, approach: 'advise', confidence: 3, quitAt: START + 84 * DAY }, START);
+eq('legacy auto-long plan requests review', !!old.reviewReason, true);
+eq('legacy saved date is not silently overwritten', old.quitAt, START + 84 * DAY);
+eq('legacy plan has no unsupported schedule', old.schedule, []);
+const done = buildReport({ ...base, quitMode: 'done', approach: 'gradual-long', quitAt: START - 3 * DAY }, START);
+eq('already quit has no countdown or reduction plan', [done.future, done.schedule.length, done.reviewReason], [false, 0, '']);
 eq('more than 20 a day → 4 mg gum (UK SmPC)', buildReport(base, START).tx.gumMg, 4);
 const vare = buildReport({ ...base, rx: 'varenicline', approach: 'abrupt' }, START);
 eq('on varenicline: no NRT added', vare.tx.form, 'none');

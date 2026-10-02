@@ -28,7 +28,7 @@ check('low confidence → suggest a clinic', r.refer === true);
 
 const text = reportHTML(a).replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ');
 [
-  'قبل يوم الترك', 'مقياس Penn State', 'لزقة + علكة', 'الأسبوع 1–6', 'اشتري العلاج البديل',
+  'قبل يوم الإقلاع', 'مقياس Penn State', 'لزقة + علكة', 'الأسبوع 1–6', 'اشتري العلاج البديل',
   'ثقتك قليلة', 'بنصحك تزور عيادة إقلاع', 'بالملل', 'عالتلفون', 'بالسهر', '2.00',
 ].forEach((k) => check(`report mentions «${k}»`, text.includes(k)));
 check('no "undefined" or "NaN" anywhere', !/undefined|NaN/.test(text));
@@ -36,7 +36,8 @@ check('report explains the chosen way to quit', text.includes('طريقتك لل
 check('report lists prescription medicines', text.includes('أدوية بوصفة الدكتور'));
 check('report lists its sources', text.includes('المصادر') && text.includes('منظمة الصحة العالمية'));
 const g = reportHTML({ ...a, approach: 'gradual-long', confidence: 6 }).replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ');
-check('12-week plan shows its weekly allowances', g.includes('تخفيف على مهل') && g.includes('الأسبوع 12'));
+check('unsupported vape plan requests review instead of weekly allowances', g.includes('راجع موعد الإقلاع') && !g.includes('الأسبوع 12'));
+check('report separates quit day from treatment duration', text.includes('مش نهاية استخدام البدائل'));
 
 // someone who already quit with cigarettes, on gum
 const b = {
@@ -50,7 +51,7 @@ const b = {
 const tb = reportHTML(b).replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ');
 check('gum schedule steps down inside weeks 5–8', tb.includes('ومن الأسبوع 7'));
 check('cost per year 1,040', tb.includes('1,040'));
-check('no "قبل يوم الترك" for someone who already quit', !tb.includes('قبل يوم الترك'));
+check('no "قبل يوم الإقلاع" for someone who already quit', !tb.includes('قبل يوم الإقلاع'));
 check('no "undefined" or "NaN" (smoker)', !/undefined|NaN/.test(tb));
 
 console.log(fails ? `\n${fails} FAILED` : '\nALL PASSED');

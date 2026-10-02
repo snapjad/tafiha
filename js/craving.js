@@ -216,7 +216,7 @@ function surf() {
     <div class="breath-wrap"><div class="breath-ring" id="cvRing"></div><span class="breath-txt" id="cvPhase">شهيق</span></div>
     <p class="cv-time" id="cvTime">3:00</p>
     <div class="cv-actions">
-      <button type="button" class="btn btn-white" id="cvDone">عدّت</button>
+      <button type="button" class="btn btn-white" id="cvDone">هديت، يلا نكمّل</button>
       <button type="button" class="btn btn-ghost-light" id="cvSlip">زلّيت</button>
     </div>`, 3);
   const prog = body.querySelector('.w-prog');
