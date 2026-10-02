@@ -1,6 +1,6 @@
 // طفّيها — the intake interview, like the first visit at a quit-smoking clinic.
 // Questions are declared as data (items can depend on earlier answers) and shown one per screen.
-import { CONDITIONS, MEDS, TRIGGERS, WITHDRAWAL } from './plan.js';
+import { CONDITIONS, MEDS, TRIGGERS, WITHDRAWAL, chooseApproach, gradualQuitAt } from './plan.js';
 
 const esc = (v) => String(v ?? '').replace(/[&<>"']/g, (c) => `&#${c.charCodeAt(0)};`);
 const YES = [[true, 'آه'], [false, 'لا']];
@@ -132,7 +132,8 @@ const SECTIONS = [
     title: 'العلاج البديل',
     sub: 'اللزقات والعلكة بيعطوك نيكوتين بدون دخان، وبيخففوا الانسحاب.',
     items: [
-      { type: 'choice', id: 'nrt_now', label: 'بتستعمل هلأ إشي منهم؟', req: true, options: [['none', 'لا'], ['gum', 'علكة'], ['patch', 'لزقات'], ['both', 'الاتنين']] },
+      { type: 'choice', id: 'rx', label: 'الدكتور كاتبلك دواء للترك؟', hint: 'أدوية بوصفة طبية.', req: true, options: [['none', 'لا'], ['varenicline', 'فارينكلين (شامبكس)'], ['cytisine', 'سيتيسين'], ['bupropion', 'بوبروبيون (زايبان)']] },
+      { type: 'choice', id: 'nrt_now', label: 'بتستعمل هلأ علكة أو لزقات نيكوتين؟', req: true, options: [['none', 'لا'], ['gum', 'علكة'], ['patch', 'لزقات'], ['both', 'الاتنين']] },
       { type: 'group', title: 'العلكة', when: is('nrt_now', 'gum', 'both'), items: [
         { type: 'choice', id: 'gum_mg', label: 'التركيز', req: true, options: [[2, '2 ملغ'], [4, '4 ملغ']] },
         { type: 'num', id: 'gum_max', label: 'الحد اليومي (مكتوب على العلبة)', step: 1, value: 15 },
@@ -144,7 +145,7 @@ const SECTIONS = [
         { type: 'num', id: 'patch_price', label: 'سعر العلبة (د.أ)', step: 0.25, value: 12 },
         { type: 'num', id: 'patch_count', label: 'كم لزقة بالعلبة', step: 1, value: 7 },
       ] },
-      { type: 'choice', id: 'nrt_pref', label: 'شو بتحب تجرّب؟', req: true, when: is('nrt_now', 'none'), options: [['advise', 'انصحني إنت'], ['patch', 'لزقات'], ['gum', 'علكة'], ['both', 'الاتنين سوا'], ['none', 'بدون علاج']] },
+      { type: 'choice', id: 'nrt_pref', label: 'شو بتحب تجرّب؟', req: true, when: (a) => a.nrt_now === 'none' && (!a.rx || a.rx === 'none'), options: [['advise', 'انصحني إنت'], ['patch', 'لزقات'], ['gum', 'علكة'], ['both', 'الاتنين سوا'], ['none', 'بدون علاج']] },
     ],
   },
   {
@@ -154,7 +155,10 @@ const SECTIONS = [
       { type: 'choice', id: 'quitMode', label: 'وين إنت هلأ؟', req: true, cards: true, options: [['done', 'تركت خلص'], ['future', 'لسّا بدخّن، بدي أحدد يوم']] },
       { type: 'choice', id: 'when', label: 'إيمتى طفّيت آخر وحدة؟', req: true, when: is('quitMode', 'done'), options: [['now', 'هلأ'], ['morning', 'اليوم الصبح'], ['yesterday', 'مبارح'], ['custom', 'تاريخ تاني']] },
       { type: 'date', id: 'pastDate', label: 'التاريخ والساعة', when: (a) => a.quitMode === 'done' && a.when === 'custom', past: true },
-      { type: 'date', id: 'futureDate', label: 'يوم الترك', when: is('quitMode', 'future'), future: true },
+      { type: 'choice', id: 'approach', label: 'كيف بدك تتركها؟', hint: 'حسب الأبحاث، الترك مرة وحدة نتيجته أعلى أو مساوية للتدريجي.', req: true, cards: true,
+        when: (a) => a.quitMode === 'future' && a.rx !== 'cytisine',
+        options: [['abrupt', 'مرة وحدة بيوم محدد', 'بتختار يوم خلال أسبوعين وبتوقف فيه'], ['gradual-short', 'تخفيف سريع', 'نص الكمية، بعدين ربعها، وبتوقف بعد أسبوعين'], ['gradual-long', 'تخفيف على مهل', 'بتنزّل كل أسبوع وبتوقف بعد 12 أسبوع'], ['advise', 'انصحني']] },
+      { type: 'date', id: 'futureDate', label: 'يوم الترك', hint: 'الأفضل خلال أسبوعين.', when: (a) => a.quitMode === 'future' && (a.rx === 'cytisine' || a.approach === 'abrupt' || (a.approach === 'advise' && chooseApproach(a) === 'abrupt')), future: true },
     ],
   },
 ];
@@ -398,7 +402,10 @@ export function runAssessment(prev = {}, opts = {}) {
 
     function finish() {
       const now = Date.now();
-      if (a.quitMode === 'future') a.quitAt = a.futureDate;
+      if (a.quitMode === 'future') {
+        const how = chooseApproach(a);
+        a.quitAt = how === 'abrupt' ? a.futureDate : gradualQuitAt(how, now);
+      }
       else if (a.when === 'now') a.quitAt = now;
       else if (a.when === 'morning') { const d = new Date(); d.setHours(8, 0, 0, 0); a.quitAt = Math.min(d.getTime(), now); }
       else if (a.when === 'yesterday') a.quitAt = now - 864e5;

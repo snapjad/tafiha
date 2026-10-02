@@ -1,5 +1,5 @@
 // طفّيها — the personal report and quit plan, shown after the interview and from the dashboard.
-import { buildReport, patchStepFor, gumStageFor, WITHDRAWAL, REASONS } from './plan.js';
+import { buildReport, patchStepFor, gumStageFor, WITHDRAWAL, REASONS, APPROACHES, targetText } from './plan.js';
 
 const esc = (v) => String(v ?? '').replace(/[&<>"']/g, (c) => `&#${c.charCodeAt(0)};`);
 const money = (v) => v.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
@@ -136,6 +136,20 @@ export function reportHTML(a) {
     txBody += '<p class="small">في كمان أدوية بوصفة طبية زي الفارينكلين والبوبروبيون بتعطي نسب نجاح عالية. اسأل عنها بعيادة الإقلاع.</p>';
   }
 
+  // ---- how to quit
+  const ap = APPROACHES[r.approach];
+  const schedRows = r.schedule.map((s) => {
+    const what = s.targets.map(targetText).join(' · ');
+    return `<div><span>${s.label}</span><b>${what}</b>${s.nic != null ? `<small>ليكويد ${s.nic} ملغ/مل</small>` : ''}</div>`;
+  }).join('');
+  const approachSec = `<section class="rp-sec">
+    <h3>طريقتك للترك: ${ap.t}</h3>
+    <p class="rp-lead">${ap.d}</p>
+    ${schedRows ? `<div class="sched">${schedRows}<div class="quit"><span>يوم الترك</span><b>${dateAr(r.quitAt)}</b></div></div>` : ''}
+    ${r.approach !== 'abrupt' ? '<p class="small">خلال التخفيف سجّل كل وحدة بالتطبيق، وأجّل أول وحدة الصبح، ولا تدخّن نصها وتحسبها أقل. وإذا قدرت توقف قبل الموعد، وقف.</p>' : ''}
+    ${r.meds.length ? `<h4>إيمتى تبلّش العلاج</h4><ul class="tips">${r.meds.map((m) => `<li>${m}</li>`).join('')}</ul>` : ''}
+  </section>`;
+
   // ---- timeline
   const top = r.triggers[0]?.label;
   const phases = [];
@@ -145,6 +159,7 @@ export function reportHTML(a) {
       'خبّر 2–3 ناس قريبين منك إنك رح تترك، واطلب منهم ما يدخّنوا جنبك.',
       'ليلة الترك: شيل كل السجاير والولاعات والطفّايات والفيب من البيت والسيارة.',
       'اقرأ خطتك للحظات الصعبة تحت، وقرر شو رح تعمل أول ساعة بيوم الترك.',
+      r.approach !== 'abrupt' ? 'امشي على جدول التخفيف، وسجّل كل وحدة بالتطبيق.' : '',
     ] });
   }
   const nl = (f, t) => (blocked ? [] : nrtLine(tx, f, t));
@@ -209,6 +224,14 @@ export function reportHTML(a) {
     ${txBody}
   </section>
 
+  ${approachSec}
+
+  <section class="rp-sec">
+    <h3>أدوية بوصفة الدكتور</h3>
+    <p class="rp-lead">في كمان أدوية بوصفة طبية: الفارينكلين والسيتيسين بيخففوا الرغبة ومتعة التدخين، والبوبروبيون بيخفف أعراض الانسحاب. منظمة الصحة العالمية بتعتبرهم علاجات معتمدة، والإرشادات البريطانية بتحط الفارينكلين والسيتيسين مع العلاج البديل المشترك من أنجح الخيارات.</p>
+    <p class="small">بيحتاجوا تقييم ووصفة ومتابعة دكتور، وما بتنوصف للكل. اسأل عنهم بعيادة الإقلاع، خصوصاً إذا اعتمادك عالي أو جرّبت قبل وما زبط.</p>
+  </section>
+
   <section class="rp-sec">
     <h3>خطتك أسبوع بأسبوع</h3>
     <ol class="phases">${phases.map((p) => `<li><div class="ph-t"><b>${p.t}</b><span>${p.sub}</span></div><ul>${p.items.filter(Boolean).map((i) => `<li>${i}</li>`).join('')}</ul></li>`).join('')}</ol>
@@ -244,6 +267,11 @@ export function reportHTML(a) {
     <ul>${refer.map((x) => `<li>${x}</li>`).join('')}</ul>
     <p>العيادة بتعطيك متابعة، وممكن أدوية بوصفة. في عيادات إقلاع بمراكز وزارة الصحة وبمركز الحسين للسرطان. خذ معك هالتقرير.</p>
   </section>` : ''}
+
+  <section class="rp-sec rp-sources">
+    <h3>المصادر</h3>
+    <ul>${r.sources.map((x) => `<li>${x}</li>`).join('')}</ul>
+  </section>
 
   <p class="rp-foot">تقرير إرشادي مبني على مقاييس علمية (فاغرستروم، Penn State) وإرشادات نشرات العلاج البديل ومراجعات كوكرين. مش بديل عن استشارة الدكتور أو الصيدلاني. ${products.map((p) => PRODUCT[p]).join(' و')}.</p>`;
 }

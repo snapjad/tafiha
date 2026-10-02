@@ -32,6 +32,11 @@ const text = reportHTML(a).replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ');
   'ثقتك قليلة', 'بنصحك تزور عيادة إقلاع', 'بالملل', 'عالتلفون', 'بالسهر', '2.00',
 ].forEach((k) => check(`report mentions «${k}»`, text.includes(k)));
 check('no "undefined" or "NaN" anywhere', !/undefined|NaN/.test(text));
+check('report explains the chosen way to quit', text.includes('طريقتك للترك'));
+check('report lists prescription medicines', text.includes('أدوية بوصفة الدكتور'));
+check('report lists its sources', text.includes('المصادر') && text.includes('منظمة الصحة العالمية'));
+const g = reportHTML({ ...a, approach: 'gradual-long', confidence: 6 }).replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ');
+check('12-week plan shows its weekly allowances', g.includes('تخفيف على مهل') && g.includes('الأسبوع 12'));
 
 // someone who already quit with cigarettes, on gum
 const b = {

@@ -1,5 +1,5 @@
 // طفّيها — offline support. App files: network first, cache as fallback. Fonts and CDN libraries: cache first.
-const CACHE = 'tafiha-v8';
+const CACHE = 'tafiha-v9';
 const SHELL = [
   './', './index.html', './css/app.css', './manifest.webmanifest',
   './js/app.js', './js/store.js', './js/craving.js', './js/share.js', './js/cigarette.js', './js/smoke.js', './js/assessment.js', './js/plan.js', './js/report.js', './js/merge.js', './js/sync.js', './js/config.js',

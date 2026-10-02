@@ -118,7 +118,9 @@ export function createFromAssessment(a, tx, prev = null) {
     logs: [],
   };
   s.prep = {};
+  s.smokes = [];
   if (prev) {
+    s.smokes = prev.smokes || [];
     s.nrt.logs = prev.nrt?.logs || [];
     s.nrt.packs = prev.nrt?.packs?.length ? prev.nrt.packs : s.nrt.packs;
     s.patch.logs = prev.patch?.logs || [];

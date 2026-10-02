@@ -86,6 +86,18 @@
             </div>
           </section>
 
+          <section class="card cut" style="--i:1" id="cutCard" aria-labelledby="cutTitle" hidden>
+            <div class="card-head">
+              <h2 class="card-title" id="cutTitle">مسموحلك اليوم</h2>
+              <span class="spacer"></span>
+              <span class="badge" id="cutWeek"></span>
+            </div>
+            <div class="cut-main"><b id="cutUsed">0</b><span id="cutOf"></span></div>
+            <div class="cut-dots" id="cutDots" aria-hidden="true"></div>
+            <p class="card-sub" id="cutTip"></p>
+            <button class="btn btn-ink btn-block" id="cutBtn"></button>
+          </section>
+
           <section class="card prep" style="--i:1" id="prepCard" aria-labelledby="prepTitle" hidden>
             <div class="card-head">
               <h2 class="card-title" id="prepTitle">تجهّز ليوم الترك</h2>
@@ -140,6 +152,14 @@
               <button class="btn btn-ink" id="planBtn">افتح التقرير</button>
               <button class="btn btn-soft" id="planPdfBtn"><svg class="ico" aria-hidden="true"><use href="#i-download"/></svg>نزّل PDF</button>
             </div>
+          </section>
+
+          <section class="card approach" style="--i:1" id="approachCard" aria-labelledby="approachTitle" hidden>
+            <p class="eyebrow">طريقتك للترك</p>
+            <h2 class="card-title" id="approachTitle"></h2>
+            <p class="card-sub" id="approachDesc"></p>
+            <div class="sched" id="approachSched"></div>
+            <ul class="med-list" id="approachMeds"></ul>
           </section>
 
           <section class="card nrt" style="--i:1" id="nrtCard" aria-labelledby="nrtTitle">

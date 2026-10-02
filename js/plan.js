@@ -6,8 +6,9 @@
 //   Vape:       Penn State Electronic Cigarette Dependence Index (Foulds et al., 2015), 0–20.
 //   Argileh:    no validated scale is used here; an approximate index (frequency, session length,
 //               dependence signs), labelled as approximate in the report.
-// Treatment guidance follows NRT product labels (patch step-down, gum strength by time to first
-// cigarette) and Cochrane reviews (NRT, combination NRT). It is guidance, not a prescription.
+// Treatment guidance follows WHO (2024) and NICE NG209, NRT product labels (patch step-down;
+// 4 mg gum for a first cigarette within 30 minutes of waking, US label, or more than 20 a day,
+// UK SmPC) and Cochrane reviews. It is guidance, not a prescription.
 
 const WEEK = 7 * 86400000;
 
@@ -107,11 +108,16 @@ function treatment(a, dep, safe) {
   const heavy = (cig && cpd > 10) || (vape && (dep.vape?.band >= 2 || nic >= 20)) || (arg && arg_?.daily && arg_?.band >= 1);
   // 4 mg gum when the first use is within 30 minutes of waking (label rule), or high dependence
   const early = (cig && ['5', '30'].includes(a.ftnd_ttfc)) || (vape && ['5', '15', '30'].includes(a.vp_ttfu));
-  const gumMg = early || dep.level >= 3 ? 4 : 2;
+  const gumMg = early || dep.level >= 3 || cpd > 20 ? 4 : 2;
   const patchSteps = heavy ? [{ mg: 21, weeks: 6 }, { mg: 14, weeks: 2 }, { mg: 7, weeks: 2 }] : [{ mg: 14, weeks: 6 }, { mg: 7, weeks: 2 }];
 
   const notes = [];
-  let form = a.nrt_now && a.nrt_now !== 'none' ? a.nrt_now : a.nrt_pref || 'advise';
+  const usingNrt = a.nrt_now && a.nrt_now !== 'none';
+  let form = usingNrt ? a.nrt_now : a.nrt_pref || 'advise';
+  // on a prescribed medicine, NRT only if they already use it or their doctor adds it
+  if (a.rx && a.rx !== 'none' && !usingNrt) {
+    return { form: 'none', notes: ['مع الدواء اللي كتبه الدكتور، ما بتحتاج علاج بديل إلا إذا نصحك فيه.'], gumMg, patchSteps, gumSchedule: null, patchWeeks: 0, vapeTaper: false };
+  }
   const socialOnly = arg && !cig && !vape && !arg_?.daily;
 
   if (form === 'advise') {
@@ -173,6 +179,138 @@ export const WITHDRAWAL = [
 
 export const REASONS = { health: 'صحتي', family: 'عيلتي وولادي', money: 'المصاري', fitness: 'اللياقة', smell: 'الريحة والأسنان', freedom: 'الحرية من الاعتماد', faith: 'الدين', baby: 'الحمل أو الولاد', doctor: 'نصيحة الدكتور' };
 
+
+// ---------------------------------------------------------------- how to quit
+// Abrupt quitting with a set quit day is the NCSCT standard treatment. Gradual
+// "reduce to quit" gives similar long-term results overall (Cochrane, Lindson 2019),
+// though one large trial found abrupt quitting better than cutting down 75% over
+// two weeks (Lindson-Hawley 2016). The two gradual schedules below follow that trial
+// and the gradual approach in the varenicline label (50% by week 4, a further 50% by
+// week 8, stopped by week 12).
+export const APPROACHES = {
+  abrupt: {
+    t: 'ترك مرة وحدة بيوم محدد',
+    d: 'بتحدد يوم قريب، وبتوقف فيه تماماً. هاي الطريقة المعتمدة ببرنامج العلاج البريطاني (NCSCT)، والتجارب لقت نتيجتها أعلى أو مساوية للتدريجي.',
+  },
+  'gradual-short': {
+    t: 'تخفيف سريع خلال أسبوعين',
+    d: 'بتنزل لنص الكمية بأول أسبوع، ولربعها بالأسبوع التاني، وبتوقف تماماً بعد 14 يوم. نفس بروتوكول تجربة Lindson-Hawley (2016).',
+    days: 14,
+  },
+  'gradual-long': {
+    t: 'تخفيف على مهل خلال 12 أسبوع',
+    d: 'بتنزّل 50% بأول 4 أسابيع، و50% كمان بالـ 4 اللي بعدها، وبتكمّل تنزيل لحد ما توقف بنهاية الأسبوع 12. نفس جدول الترك التدريجي بنشرة الفارينكلين الرسمية.',
+    days: 84,
+  },
+};
+
+// share of the starting amount allowed in each step
+const STEPS = {
+  'gradual-short': [{ days: 7, pct: 0.5 }, { days: 7, pct: 0.25 }],
+  'gradual-long': [0.875, 0.75, 0.625, 0.5, 0.4375, 0.375, 0.3125, 0.25, 0.1875, 0.125, 0.0625, 0.0625].map((pct) => ({ days: 7, pct })),
+};
+
+// sessions a day, from the Penn State answer bands
+const VAPE_TIMES = { '0-4': 3, '5-9': 7, '10-14': 12, '15-19': 17, '20-29': 25, '30+': 35 };
+// nicotine strengths sold for refillable vapes, highest to lowest (mg/ml)
+const NIC_LADDER = [50, 35, 20, 12, 6, 3, 0];
+
+export function chooseApproach(a) {
+  if (a.quitMode !== 'future') return 'abrupt';
+  if (a.rx === 'cytisine') return 'abrupt'; // quit day must fall within the first 5 days
+  if (a.approach && a.approach !== 'advise') return a.approach;
+  // not feeling able to stop in one go → cut down to quit; otherwise the standard abrupt plan
+  return Number(a.confidence ?? 5) <= 3 ? 'gradual-long' : 'abrupt';
+}
+
+const startOfDay = (t) => { const d = new Date(t); d.setHours(0, 0, 0, 0); return d.getTime(); };
+
+// the quit day a gradual plan arrives at (08:00 on the day after the last step)
+export function gradualQuitAt(approach, startAt) {
+  const days = APPROACHES[approach]?.days || 0;
+  return startOfDay(startAt) + days * 86400000 + 8 * 3600000;
+}
+
+function baselines(a) {
+  const p = a.products || [];
+  const out = [];
+  if (p.includes('cig')) out.push({ type: 'cig', unit: 'سيجارة', unitPl: 'سجاير', per: 'day', base: Number(a.cig_perDay) || 0 });
+  if (p.includes('vape')) out.push({ type: 'vape', unit: 'مرة فيب', unitPl: 'مرات فيب', per: 'day', base: VAPE_TIMES[a.vp_times] || 15 });
+  if (p.includes('argileh')) out.push({ type: 'argileh', unit: 'راس', unitPl: 'روس', per: 'week', base: Number(a.ar_perWeek) || 0 });
+  return out;
+}
+
+function nicStep(start, notch) {
+  let i = NIC_LADDER.findIndex((n) => n <= start);
+  if (i < 0) i = NIC_LADDER.length - 1;
+  return NIC_LADDER[Math.min(NIC_LADDER.length - 1, i + notch)];
+}
+
+// weekly (or daily) allowances on the way to the quit day
+export function reductionSchedule(a, approach, startAt) {
+  const steps = STEPS[approach];
+  if (!steps) return [];
+  const bases = baselines(a);
+  const refill = (a.products || []).includes('vape') && a.vp_kind !== 'disposable' && Number(a.vp_nicotine) > 0;
+  let day = 0;
+  return steps.map((st, i) => {
+    const from = day;
+    day += st.days;
+    const targets = bases.map((b) => ({
+      ...b,
+      value: b.per === 'week' ? Math.ceil(b.base * st.pct) : Math.max(1, Math.ceil(b.base * st.pct)),
+    }));
+    // refillable vapes also step the liquid down one strength every 3 weeks on the long plan
+    const nic = refill && approach === 'gradual-long' ? nicStep(Number(a.vp_nicotine), Math.floor(i / 3)) : null;
+    return {
+      index: i, from, to: day,
+      fromAt: startOfDay(startAt) + from * 86400000,
+      toAt: startOfDay(startAt) + day * 86400000,
+      label: approach === 'gradual-short' ? `الأسبوع ${i + 1}` : `الأسبوع ${i + 1}`,
+      pct: st.pct, targets, nic,
+    };
+  });
+}
+
+// "10 سجاير باليوم", "2 راس بالأسبوع" (Arabic plural for 3–10)
+export const unitOf = (t) => (t.value >= 3 && t.value <= 10 ? t.unitPl : t.unit);
+export const targetText = (t) => `${t.value} ${unitOf(t)} ${t.per === 'week' ? 'بالأسبوع' : 'باليوم'}`;
+
+export function stepAt(schedule, now = Date.now()) {
+  return schedule.find((s) => now >= s.fromAt && now < s.toAt) || null;
+}
+
+// when each medicine starts relative to the quit day (doses are the prescriber's)
+function medicines(a, approach, tx, blocked, future) {
+  const rx = a.rx || 'none';
+  const out = [];
+  if (rx === 'varenicline') {
+    out.push(approach === 'gradual-long'
+      ? 'الفارينكلين: بتبلّش فيه من أول يوم بالتخفيف، وبتكمّل 12 أسبوع بعد ما توقف (المجموع 24 أسبوع). الجرعات حسب وصفة الدكتور.'
+      : 'الفارينكلين: بتبلّش فيه قبل يوم الترك بأسبوع، فيصير يوم الترك هو اليوم الثامن من الدواء. الكورس 12 أسبوع، والجرعات حسب وصفة الدكتور.');
+  }
+  if (rx === 'cytisine') out.push('السيتيسين: الكورس 25 يوم، ولازم توقف تدخين بأول 5 أيام منه، فابدأ فيه قبل يوم الترك بـ 4 أيام. الجرعات حسب الوصفة.');
+  if (rx === 'bupropion') out.push('البوبروبيون: بتبلّش فيه قبل يوم الترك بأسبوع لأسبوعين، والكورس 7 لـ 12 أسبوع حسب الوصفة.');
+  if (!blocked && (tx.form === 'patch' || tx.form === 'both') && (approach !== 'abrupt' || future)) {
+    out.push('اللزقة: ابدأ فيها قبل يوم الترك بأسبوعين وإنت لسّا عم تدخّن (تحميل مسبق)، وبيوم الترك بتمشي على جدولها. مراجعة كوكرين 2023 لقت إن هالشي بيرفع فرصة النجاح.');
+  }
+  if (!blocked && approach !== 'abrupt' && (tx.form === 'gum' || tx.form === 'both')) {
+    out.push('العلكة خلال التخفيف: خذ حبة بين السجاير لتطوّل المسافة بينهم، حسب نشرة العلكة، وبيوم الترك بتمشي على جدولها.');
+  }
+  return out;
+}
+
+export const SOURCES = [
+  'منظمة الصحة العالمية: الإرشادات السريرية لعلاج الإدمان على التبغ عند البالغين (2024)',
+  'المعهد الوطني البريطاني للصحة NICE: إرشاد NG209 لعلاج الاعتماد على التبغ',
+  'المركز الوطني البريطاني لعلاج التدخين NCSCT: برنامج العلاج القياسي، وإرشاد الإقلاع عن الفيب',
+  'كوكرين: جرعات وطرق العلاج البديل بالنيكوتين (Theodoulou 2023)',
+  'كوكرين: التخفيف التدريجي للترك (Lindson 2019)، وتجربة Lindson-Hawley في Annals of Internal Medicine (2016)',
+  'كوكرين: طرق الإقلاع عن الفيب (Butler 2025)، وطرق الإقلاع عن الأرجيلة (Asfar 2023)',
+  'نشرات المنتجات الرسمية: علكة ولزقة النيكوتين (UK SmPC)، الفارينكلين (FDA)، السيتيسين (UK SmPC)',
+  'مقياس فاغرستروم (Heatherton 1991)، ومقياس Penn State للسيجارة الإلكترونية (Foulds 2015)',
+];
+
 // ---------------------------------------------------------------- report
 export function buildReport(a, now = Date.now()) {
   const products = a.products || [];
@@ -202,10 +340,17 @@ export function buildReport(a, now = Date.now()) {
   const attempts = a.attempts || '0';
   const refer = safe.stop.length > 0 || dep.level >= 3 || attempts === '3+' || (a.conditions || []).includes('mental') || conf < 4;
 
-  const quitAt = a.quitAt || now;
+  const approach = chooseApproach(a);
+  const startAt = a.assessedAt || now;
+  const quitAt = approach !== 'abrupt' ? gradualQuitAt(approach, startAt) : (a.quitAt || now);
   const future = quitAt > now + 60000;
+  const schedule = reductionSchedule(a, approach, startAt);
+  const meds = medicines(a, approach, tx, safe.stop.length > 0, future);
 
-  return { dep, safe, tx, perDay, triggers, withdrawal, motivation, refer, attempts, quitAt, future, importance: imp, confidence: conf };
+  return {
+    dep, safe, tx, perDay, triggers, withdrawal, motivation, refer, attempts, quitAt, future,
+    importance: imp, confidence: conf, approach, startAt, schedule, meds, sources: SOURCES,
+  };
 }
 
 // the week of the plan we are in (1-based), or 0 before the quit day

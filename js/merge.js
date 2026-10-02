@@ -15,7 +15,7 @@ const CONFIG = {
   nrt: (s) => (s.nrt ? strip(s.nrt) : null),
   patch: (s) => (s.patch ? strip(s.patch) : null),
 };
-const NUMS = ['nrt.logs', 'nrt.packs', 'patch.logs', 'patch.packs'];
+const NUMS = ['nrt.logs', 'nrt.packs', 'patch.logs', 'patch.packs', 'smokes'];
 const OBJS = ['cravings', 'slips'];
 
 function strip(o) {
@@ -85,7 +85,7 @@ export function merge(a, b) {
   out._del = del;
 
   for (const p of NUMS) {
-    if (!get(out, p.split('.')[0])) continue;
+    if (p.includes('.') && !get(out, p.split('.')[0])) continue;
     const all = new Set([...(get(a, p) || []), ...(get(b, p) || [])]);
     put(out, p, [...all].filter((v) => !del[idOf(p, v)]).sort((x, y) => x - y));
   }

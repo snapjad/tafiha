@@ -5,7 +5,7 @@ import { makeStory } from './share.js';
 import { initCigarette } from './cigarette.js';
 import { runAssessment } from './assessment.js';
 import { openReport, downloadPDF } from './report.js';
-import { buildReport, planWeek, patchStepFor, gumStageFor } from './plan.js';
+import { buildReport, planWeek, patchStepFor, gumStageFor, stepAt, APPROACHES, unitOf, targetText } from './plan.js';
 import * as Sync from './sync.js';
 
 const $ = (sel, root = document) => root.querySelector(sel);
@@ -173,9 +173,9 @@ function renderToday() {
   const p = state.patch;
   const prep = isPrep();
   const btn = $('#todayBtn');
-  if (p?.active && !prep) {
+  if (p?.active && (!prep || patchPreload())) {
     const wk = planWeek(state.quitAt);
-    const st = patchStepFor(p.steps, wk);
+    const st = wk ? patchStepFor(p.steps, wk) : { ...p.steps[0], index: 0 };
     card.hidden = !st;
     if (!st) return;
     const done = S.patchedToday(state);
@@ -239,13 +239,23 @@ function renderNRT() {
     `<i class="${i === 6 ? 'today' : ''}" style="--h:${(w.n / max).toFixed(3)}" title="${w.n}"></i>`).join('');
 }
 
+const currentPlan = () => (state.assessment ? buildReport(state.assessment) : null);
+
+// starting the patch up to two weeks before the quit day, while still smoking (Cochrane 2023)
+function patchPreload() {
+  const r = currentPlan();
+  return !!(state.patch?.active && isPrep() && r?.meds.some((m) => m.includes('تحميل مسبق'))
+    && state.quitAt - Date.now() <= 14 * S.DAY);
+}
+
 function renderPatch() {
   const p = state.patch;
   const card = $('#patchCard');
   card.hidden = !p?.active;
   if (!p?.active) return;
   const wk = planWeek(state.quitAt);
-  const st = wk ? patchStepFor(p.steps, wk) : null;
+  const preload = patchPreload();
+  const st = wk ? patchStepFor(p.steps, wk) : preload ? { ...p.steps[0], index: 0 } : null;
   const total = p.steps.reduce((a, x) => a + x.weeks, 0);
   $('#patchBadge').textContent = `${p.hours} ساعة`;
   $('#patchSteps').innerHTML = p.steps.map((x, i) => {
@@ -254,14 +264,16 @@ function renderPatch() {
   }).join('');
   const stock = S.patchStock(state);
   const stockTxt = stock ? ` باقي عندك ${stock} ${S.word(stock, 'لزقة', 'لزقات')}.` : ' لما تشتري علبة اضغط «اشتريت علبة».';
-  $('#patchNote').textContent = wk === 0
+  $('#patchNote').textContent = preload
+    ? `تحميل مسبق: لزقة ${p.steps[0].mg} ملغ كل يوم لحد يوم الترك، وإنت لسّا عم تخفّف.${stockTxt}`
+    : wk === 0
     ? `بتبلّش يوم الترك بلزقة ${p.steps[0].mg} ملغ.${stockTxt}`
     : st ? `الأسبوع ${wk} من ${total}: لزقة ${st.mg} ملغ لآخر الأسبوع ${st.endsWeek}.${stockTxt}` : 'خلصت خطة اللزقات. مبروك!';
   const btn = $('#patchBtn');
   const done = S.patchedToday(state);
-  btn.disabled = wk === 0 || !st;
+  btn.disabled = !st;
   btn.setAttribute('aria-pressed', String(done));
-  btn.textContent = wk === 0 ? 'بتبلّش يوم الترك' : !st ? 'خلصت الخطة' : done ? 'حطيتها اليوم ✓' : 'حطيت لزقة اليوم';
+  btn.textContent = !st ? (wk === 0 ? 'بتبلّش يوم الترك' : 'خلصت الخطة') : done ? 'حطيتها اليوم ✓' : 'حطيت لزقة اليوم';
 }
 
 function logPatch() {
@@ -280,6 +292,78 @@ function logPatch() {
     renderStats();
     renderToday();
   });
+}
+
+// ---------------------------------------------------------------- cutting down to the quit day
+const CUT_TIPS = [
+  'أجّل أول وحدة الصبح كل يوم شوي عن اليوم اللي قبله.',
+  'ابدأ بشيل الوحدات المرتبطة بلحظة معينة، متل اللي بعد القهوة.',
+  'خلّي الباكيت أو الجهاز بغرفة تانية، مش بجيبتك.',
+  'قبل كل وحدة استنى 10 دقايق. كتير مرات الرغبة بتروح لحالها.',
+  'لا تدخّن نصها وتحسبها أقل: يا كاملة يا لا.',
+];
+
+function cutWindow(step) {
+  const t = step.targets[0];
+  return t.per === 'week' ? [step.fromAt, step.toAt] : [S.startOfDay(Date.now()), S.startOfDay(Date.now()) + S.DAY];
+}
+
+function renderCut() {
+  const card = $('#cutCard');
+  const r = currentPlan();
+  const step = r && r.approach !== 'abrupt' && isPrep() ? stepAt(r.schedule) : null;
+  card.hidden = !step;
+  if (!step) return;
+  const t = step.targets[0];
+  const [from, to] = cutWindow(step);
+  const used = (state.smokes || []).filter((x) => x >= from && x < to).length;
+  const left = t.value - used;
+  $('#cutTitle').textContent = t.per === 'week' ? 'مسموحلك هالأسبوع' : 'مسموحلك اليوم';
+  $('#cutWeek').textContent = `${step.label} من ${r.schedule.length}`;
+  setNum($('#cutUsed'), used);
+  $('#cutOf').textContent = `من ${t.value} ${unitOf(t)}`;
+  const n = Math.max(t.value, used);
+  $('#cutDots').innerHTML = Array.from({ length: Math.min(n, 40) }, (_, i) =>
+    `<i class="${i < used ? (i < t.value ? 'used' : 'over') : ''}"></i>`).join('');
+  const tip = CUT_TIPS[Math.floor(Date.now() / S.DAY) % CUT_TIPS.length];
+  const nic = step.nic != null ? ` هالأسبوع: ليكويد ${step.nic} ملغ/مل.` : '';
+  $('#cutTip').textContent = left > 0 ? `باقيلك ${left}. ${tip}${nic}`
+    : left === 0 ? `خلص المسموح. إذا إجتك رغبة، اضغط «عندي رغبة».${nic}`
+    : `تعدّيت المسموح، عادي. ارجع عالجدول من الوحدة الجاية.${nic}`;
+  $('#cutBtn').textContent = t.type === 'cig' ? 'دخّنت وحدة' : t.type === 'vape' ? 'سحبت مرة' : 'شربت راس';
+}
+
+function logCut() {
+  const t = Date.now();
+  state.smokes = state.smokes || [];
+  state.smokes.push(t);
+  persist();
+  renderCut();
+  toast('انسجلت', 'تراجع', () => {
+    const i = state.smokes.lastIndexOf(t);
+    if (i > -1) state.smokes.splice(i, 1);
+    persist();
+    renderCut();
+  });
+}
+
+function renderApproach() {
+  const card = $('#approachCard');
+  const r = currentPlan();
+  card.hidden = !r;
+  if (!r) return;
+  const ap = APPROACHES[r.approach];
+  $('#approachTitle').textContent = ap.t;
+  $('#approachDesc').textContent = ap.d;
+  const now = Date.now();
+  const rows = r.schedule.map((s) => {
+    const cls = now >= s.toAt ? 'done' : now >= s.fromAt ? 'now' : '';
+    const what = s.targets.map(targetText).join(' · ');
+    return `<div class="${cls}"><span>${s.label}</span><b>${what}</b>${s.nic != null ? `<small>ليكويد ${s.nic} ملغ/مل</small>` : ''}</div>`;
+  });
+  rows.push(`<div class="quit ${now >= state.quitAt ? 'done' : ''}"><span>${r.future ? 'يوم الترك' : 'تركت'}</span><b>${dateAr(state.quitAt)}</b></div>`);
+  $('#approachSched').innerHTML = rows.join('');
+  $('#approachMeds').innerHTML = r.meds.map((m) => `<li>${m}</li>`).join('');
 }
 
 function renderPlan() {
@@ -498,6 +582,8 @@ function renderAll() {
   renderPatch();
   renderPrep();
   renderToday();
+  renderCut();
+  renderApproach();
 }
 
 // ---------------------------------------------------------------- toast
@@ -917,6 +1003,7 @@ function start() {
     toast(`انضافت علبة. صار عندك ${S.gumStock(state)} حبة`);
   };
   $('#patchBtn').onclick = logPatch;
+  $('#cutBtn').onclick = logCut;
   $('#patchPackBtn').onclick = () => {
     state.patch.packs.push(Date.now());
     persist();
