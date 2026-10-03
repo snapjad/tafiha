@@ -176,7 +176,7 @@ function shell() {
   const allowed = SECTIONS.filter((s) => s.roles.includes(me.role));
   root.innerHTML = `
     <header class="adm-top">
-      <div class="adm-brand">${WORDMARK}<span>الإدارة</span></div>
+      <a class="adm-brand" href="#${allowed[0].id}" data-home aria-label="الإدارة، الصفحة الرئيسية">${WORDMARK}<span>الإدارة</span></a>
       <nav class="adm-nav" aria-label="الأقسام">
         ${allowed.map((s) => `<a href="#${s.id}" data-id="${s.id}">${s.label}</a>`).join('')}
       </nav>
@@ -184,6 +184,12 @@ function shell() {
     </header>
     <main class="adm-main" id="section" tabindex="-1"></main>`;
   root.querySelector('[data-out]').onclick = signOut;
+  // the logo: the first section (the admin home), even when it's already open
+  root.querySelector('[data-home]').onclick = (ev) => {
+    ev.preventDefault();
+    if (location.hash !== `#${allowed[0].id}`) location.hash = allowed[0].id; else show();
+    window.scrollTo({ top: 0 });
+  };
   const show = () => {
     const id = location.hash.slice(1);
     const section = allowed.find((s) => s.id === id) || allowed[0];

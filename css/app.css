@@ -63,7 +63,9 @@ img { display: block; max-width: 100%; }
   padding: 6px 2px 18px;
   animation: fade-down var(--t-slow) var(--out) both;
 }
-.brand { display: flex; align-items: center; gap: 10px; }
+.brand { display: flex; align-items: center; gap: 10px; color: inherit; text-decoration: none; border-radius: 10px; -webkit-tap-highlight-color: transparent; }
+a.brand, a.onb-hero { cursor: pointer; }
+a.brand:focus-visible, a.onb-hero:focus-visible { outline: 3px solid rgba(225, 38, 28, .35); outline-offset: 4px; }
 .top .brand { flex: none; white-space: nowrap; }
 .top > .icon-btn, .top > .sync-dot { flex: none; }
 /* the wordmark is drawn, never typeset; at least 72px wide (brand book) */
@@ -368,7 +370,7 @@ a.btn { text-decoration: none; }
 .field { display: grid; gap: 5px; font-size: 13px; color: var(--smoke); }
 .field input, .field select {
   width: 100%; min-height: 46px; padding: 0 12px; border-radius: 12px; border: 1.5px solid var(--line);
-  background: var(--paper); color: var(--ink); font-size: 15px;
+  background: var(--paper); color: var(--ink); font-size: 16px; /* under 16px, iPhone Safari zooms the page in on focus */
 }
 .field input:focus, .field select:focus { outline: none; border-color: var(--filter); }
 .toggles { display: flex; gap: 8px; flex-wrap: wrap; }
@@ -1058,3 +1060,6 @@ a.btn { text-decoration: none; }
 .auth-legal { margin: 2px 0 0; font-size: 12.5px; line-height: 1.8; color: var(--smoke); text-align: center; }
 .auth-legal a, .legal-links a { color: var(--ember-deep); }
 .legal-links { display: flex; flex-wrap: wrap; justify-content: center; gap: 6px 16px; margin-top: 4px; font-size: 13px; }
+
+/* iPhone Safari zooms into any field whose text is under 16px; nothing unstyled may fall below it */
+input, select, textarea { font-size: max(16px, 1em); }

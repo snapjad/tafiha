@@ -150,99 +150,174 @@ function screens(consult) {
   return list.filter(Boolean);
 }
 
+// One page per screen, side by side on a track that follows the finger. In Arabic the next
+// screen sits to the left, so dragging to the right moves on. Letting go snaps to the nearest
+// screen (a quick flick is enough); the ends resist; the content trails the page slightly.
+const SNAP = 'transform 380ms cubic-bezier(.2,.8,.2,1)';
+
+function pageHTML(s, i, list) {
+  const dots = list.map((_, j) => `<i class="${j === i ? 'on' : ''}"></i>`).join('');
+  return `
+    <section class="intro-page" data-theme="${s.dark ? 'dark' : 'light'}" data-screen="${s.id}" aria-label="${i + 1} من ${list.length}">
+      <div class="intro-screen">
+        ${s.dark
+          ? '<div class="intro-brand"><img src="assets/brand/tafiha-logo-transparent-light.svg" alt="طفّيها" width="132" height="76"></div>'
+          : `<div class="intro-top">
+              <button class="intro-round" type="button" data-back aria-label="رجوع">${I.back}</button>
+              ${s.last ? '' : '<button class="intro-skip" type="button" data-skip>تخطّي</button>'}
+            </div>`}
+        <div class="intro-main">
+          ${s.last ? mark(55) : ''}
+          ${s.dark ? `<div class="intro-visual intro-depth">${s.body}</div>` : ''}
+          <h1 class="intro-title" tabindex="-1">${s.title}</h1>
+          <p class="intro-sub">${s.sub}</p>
+          ${s.dark ? '' : `<div class="intro-body intro-depth">${s.body}</div>`}
+        </div>
+        <div class="intro-foot">
+          <div class="intro-dots" aria-hidden="true">${dots}</div>
+          ${s.last
+            ? `<button class="intro-btn" type="button" data-start>ابدأ استشارتك</button>
+               <button class="intro-btn line" type="button" data-login>عندي حساب</button>
+               <p class="intro-fine">بياناتك إلك. ما في إعلانات، وما منبيعها لحدا.</p>`
+            : `<button class="intro-btn" type="button" data-next>التالي${I.next}</button>`}
+        </div>
+      </div>
+    </section>`;
+}
+
 export function run({ consult = false } = {}) {
   return new Promise((resolve) => {
     const list = screens(consult);
-    let idx = 0;
+    const last = list.length - 1;
+    let pos = 0;
+    let width = 0;
     const covered = [...document.body.children].filter((el) => !['SCRIPT', 'SVG'].includes(el.tagName.toUpperCase()));
     const inertBefore = covered.map((el) => el.inert);
     covered.forEach((el) => { el.inert = true; });
 
     const root = document.createElement('div');
-    root.className = 'intro';
+    root.className = `intro${RM ? ' still' : ''}`;
     root.setAttribute('role', 'dialog');
     root.setAttribute('aria-modal', 'true');
     root.setAttribute('aria-label', 'أهلاً فيك بطفّيها');
+    root.innerHTML = `<div class="intro-track">${list.map((s, i) => pageHTML(s, i, list)).join('')}</div>`;
     document.body.appendChild(root);
+    const track = root.querySelector('.intro-track');
+    const pages = [...track.children];
+
+    // offset: how far the finger has dragged, in px (positive = towards the next screen)
+    function place(offset = 0, animate = true) {
+      const t = animate && !RM ? SNAP : 'none';
+      track.style.transition = t;
+      track.style.transform = `translate3d(${pos * width + offset}px, 0, 0)`;
+      const f = pos + (width ? offset / width : 0);
+      pages.forEach((p, i) => {
+        p.style.setProperty('--o', Math.max(-1, Math.min(1, i - f)).toFixed(4));
+        p.style.setProperty('--snap', t);
+      });
+    }
+
+    function settle() {
+      pages.forEach((p, i) => {
+        p.inert = i !== pos;
+        if (i !== pos) p.setAttribute('aria-hidden', 'true'); else p.removeAttribute('aria-hidden');
+      });
+      root.dataset.theme = list[pos].dark ? 'dark' : 'light';
+    }
+
+    function go(to, animate = true) {
+      const target = Math.max(0, Math.min(last, to));
+      const moved = target !== pos;
+      pos = target;
+      place(0, animate);
+      settle();
+      if (moved) setTimeout(() => pages[pos].querySelector('.intro-title').focus({ preventScroll: true }), animate && !RM ? 400 : 0);
+    }
 
     function finish(v) {
       markSeen();
+      window.removeEventListener('resize', onResize);
       root.remove();
       covered.forEach((el, i) => { el.inert = inertBefore[i]; });
       resolve(v);
     }
 
-    function go(to) {
-      if (to < 0 || to >= list.length || to === idx) return;
-      const dir = to > idx ? 1 : -1;
-      idx = to;
-      render(dir);
-    }
+    root.addEventListener('click', (ev) => {
+      if (dragged) { ev.stopPropagation(); ev.preventDefault(); return; }
+      const b = ev.target.closest('button');
+      if (!b) return;
+      if ('next' in b.dataset) go(pos + 1);
+      else if ('back' in b.dataset) go(pos - 1);
+      else if ('skip' in b.dataset) go(last);
+      else if ('start' in b.dataset) finish('start');
+      else if ('login' in b.dataset) finish('login');
+    }, true);
 
-    function render(dir = 0) {
-      const s = list[idx];
-      root.dataset.theme = s.dark ? 'dark' : 'light';
-      root.dataset.screen = s.id;
-      const dots = list.map((_, i) => `<i class="${i === idx ? 'on' : ''}"></i>`).join('');
-      root.innerHTML = `
-        <div class="intro-screen ${dir > 0 ? 'fwd' : dir < 0 ? 'bwd' : ''}">
-          ${s.dark
-            ? '<div class="intro-brand"><img src="assets/brand/tafiha-logo-transparent-light.svg" alt="طفّيها" width="132" height="76"></div>'
-            : `<div class="intro-top">
-                <button class="intro-round" type="button" data-back aria-label="رجوع">${I.back}</button>
-                ${s.last ? '' : '<button class="intro-skip" type="button" data-skip>تخطّي</button>'}
-              </div>`}
-          <div class="intro-main">
-            ${s.last ? mark(55) : ''}
-            ${s.dark ? `<div class="intro-visual">${s.body}</div>` : ''}
-            <h1 class="intro-title" tabindex="-1">${s.title}</h1>
-            <p class="intro-sub">${s.sub}</p>
-            ${s.dark ? '' : `<div class="intro-body">${s.body}</div>`}
-          </div>
-          <div class="intro-foot">
-            <div class="intro-dots" role="img" aria-label="${idx + 1} من ${list.length}">${dots}</div>
-            ${s.last
-              ? `<button class="intro-btn" type="button" data-start>ابدأ استشارتك</button>
-                 <button class="intro-btn line" type="button" data-login>عندي حساب</button>
-                 <p class="intro-fine">بياناتك إلك. ما في إعلانات، وما منبيعها لحدا.</p>`
-              : `<button class="intro-btn" type="button" data-next>التالي${I.next}</button>`}
-          </div>
-        </div>`;
-      root.querySelector('[data-next]')?.addEventListener('click', () => go(idx + 1));
-      root.querySelector('[data-back]')?.addEventListener('click', () => go(idx - 1));
-      root.querySelector('[data-skip]')?.addEventListener('click', () => go(list.length - 1));
-      root.querySelector('[data-start]')?.addEventListener('click', () => finish('start'));
-      root.querySelector('[data-login]')?.addEventListener('click', () => finish('login'));
-      root.querySelector('.intro-title').focus({ preventScroll: true });
-    }
-
-    // swipe: in Arabic the next screen comes from the left, so dragging to the right moves on
-    let startX = null;
-    let startY = 0;
-    root.addEventListener('pointerdown', (ev) => { if (ev.isPrimary) { startX = ev.clientX; startY = ev.clientY; } });
-    root.addEventListener('pointerup', (ev) => {
-      if (startX === null) return;
-      const dx = ev.clientX - startX;
-      const dy = ev.clientY - startY;
-      startX = null;
-      if (Math.abs(dx) < 60 || Math.abs(dx) < Math.abs(dy) * 1.5) return;
-      go(idx + (dx > 0 ? 1 : -1));
+    // ---- dragging
+    let drag = null;
+    let dragged = false;
+    track.addEventListener('pointerdown', (ev) => {
+      if (!ev.isPrimary || (ev.pointerType === 'mouse' && ev.button !== 0)) return;
+      drag = { id: ev.pointerId, x: ev.clientX, y: ev.clientY, dx: 0, axis: null, trail: [[ev.timeStamp, ev.clientX]] };
+      dragged = false;
     });
-    root.addEventListener('pointercancel', () => { startX = null; });
+    track.addEventListener('pointermove', (ev) => {
+      if (!drag || ev.pointerId !== drag.id) return;
+      const dx = ev.clientX - drag.x;
+      const dy = ev.clientY - drag.y;
+      if (!drag.axis) {
+        if (Math.abs(dx) < 8 && Math.abs(dy) < 8) return;
+        drag.axis = Math.abs(dx) > Math.abs(dy) ? 'x' : 'y';
+        if (drag.axis === 'x') {
+          try { track.setPointerCapture(ev.pointerId); } catch { /* the pointer already ended */ }
+          root.classList.add('dragging');
+          dragged = true;
+        }
+      }
+      if (drag.axis !== 'x') return;
+      ev.preventDefault();
+      // no screen before the first or after the last: the page gives a little and comes back
+      const edge = (pos === 0 && dx < 0) || (pos === last && dx > 0);
+      drag.dx = edge ? dx / (1 + Math.abs(dx) / (width * 0.25)) * 0.5 : dx;
+      drag.trail.push([ev.timeStamp, ev.clientX]);
+      if (drag.trail.length > 6) drag.trail.shift();
+      place(drag.dx, false);
+    });
+    const end = (ev) => {
+      if (!drag || ev.pointerId !== drag.id) return;
+      const d = drag;
+      drag = null;
+      root.classList.remove('dragging');
+      if (d.axis !== 'x') return;
+      const [t0, x0] = d.trail[0];
+      const [t1, x1] = d.trail[d.trail.length - 1];
+      const v = t1 > t0 ? (x1 - x0) / (t1 - t0) : 0; // px per ms; positive = towards the next screen
+      let to = pos;
+      if (d.dx > width * 0.22 || (v > 0.35 && d.dx > 0)) to = pos + 1;
+      else if (d.dx < -width * 0.22 || (v < -0.35 && d.dx < 0)) to = pos - 1;
+      go(to);
+      setTimeout(() => { dragged = false; }, 0);
+    };
+    track.addEventListener('pointerup', end);
+    track.addEventListener('pointercancel', (ev) => { if (drag && ev.pointerId === drag.id) { drag.dx = 0; end(ev); } });
+
     root.addEventListener('keydown', (ev) => {
-      if (ev.target.closest('button') && (ev.key === 'Enter' || ev.key === ' ')) return;
-      if (ev.key === 'ArrowLeft') go(idx + 1);
-      else if (ev.key === 'ArrowRight') go(idx - 1);
+      if (ev.key === 'ArrowLeft') go(pos + 1);
+      else if (ev.key === 'ArrowRight') go(pos - 1);
       else if (ev.key === 'Tab') {
-        const items = [...root.querySelectorAll('button')];
+        const items = [...pages[pos].querySelectorAll('button')];
         const first = items[0];
-        const last = items.at(-1);
-        if (ev.shiftKey && (document.activeElement === first || document.activeElement.classList.contains('intro-title'))) { ev.preventDefault(); last.focus(); }
-        else if (!ev.shiftKey && document.activeElement === last) { ev.preventDefault(); first.focus(); }
+        const lastItem = items.at(-1);
+        if (ev.shiftKey && (document.activeElement === first || document.activeElement.classList.contains('intro-title'))) { ev.preventDefault(); lastItem.focus(); }
+        else if (!ev.shiftKey && document.activeElement === lastItem) { ev.preventDefault(); first.focus(); }
       }
     });
 
-    root.classList.toggle('still', RM);
-    render();
+    function onResize() { width = root.clientWidth; place(0, false); }
+    window.addEventListener('resize', onResize);
+    width = root.clientWidth;
+    place(0, false);
+    settle();
+    pages[0].querySelector('.intro-title').focus({ preventScroll: true });
   });
 }

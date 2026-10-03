@@ -1033,6 +1033,7 @@ async function openAccount() {
   if (!currentUser) {
     const result = await Auth.runAuth({ name: state?.name, allowLocal: true });
     if (result?.user) location.reload();
+    else if (result === 'home') showPage('home');
     return;
   }
   const details = currentUser.user_metadata || {};
@@ -1080,6 +1081,7 @@ async function openAccount() {
       btn.disabled = true;
       const result = await Auth.runAuth({ mode: 'password', email: currentUser.email });
       if (result?.user) { currentUser = result.user; toast('تغيّرت كلمة السر'); }
+      if (result === 'home') { closeSheet(); showPage('home'); return; }
       btn.disabled = false;
       btn.focus({ preventScroll: true });
     };
@@ -1135,24 +1137,30 @@ function clearPending() { try { localStorage.removeItem(PENDING); } catch { /* i
 
 // First visit: the interview, then an account (needed to see the report).
 // «عندي حساب» on the first screen goes straight to signing in.
+// Before there's an account: the welcome screens (first launch, or the logo), the interview,
+// then an account to open the report. Answers already given are kept on the way.
 async function welcome(error) {
   let answers = loadPending();
   let mode = answers ? 'gate' : null;
-  // first launch: the welcome screens, once («عندي حساب» there goes straight to signing in)
-  if (!answers && !error && !Onboarding.seen()) {
-    const { consult_enabled: consult } = await Content.appConfig();
-    if (await Onboarding.run({ consult }) === 'login') mode = 'login';
-  }
+  let intro = !answers && !error && !Onboarding.seen();
   for (;;) {
+    if (intro) {
+      intro = false;
+      const { consult_enabled: consult } = await Content.appConfig();
+      // «عندي حساب» goes straight to signing in; «ابدأ استشارتك» to the interview, or back to the report gate
+      mode = await Onboarding.run({ consult }) === 'login' ? 'login' : answers ? 'gate' : null;
+    }
     if (!answers && mode !== 'login') {
-      const r = await runAssessment({}, { onLogin: true });
+      const r = await runAssessment({}, { onLogin: true, onHome: true });
+      if (r.__home) { intro = true; continue; }
       if (r.__login) mode = 'login';
       else { answers = r; savePending(answers); mode = 'gate'; }
     }
     const result = await Auth.runAuth({ mode, name: answers?.name, error, onRedirect: () => answers && savePending(answers) });
     error = '';
     if (result?.user) return result.user;
-    mode = null; // left the sign-in screen: back to the interview
+    if (result === 'home') { intro = true; continue; }
+    mode = answers ? 'gate' : null; // left the sign-in screen: back to the interview, or to the gate
   }
 }
 
@@ -1292,6 +1300,8 @@ function start() {
     toast,
   });
   $('#cravingBtn').onclick = (ev) => openCraving(ev.currentTarget);
+  // the logo: the home page from anywhere in the app
+  $('#homeLogo').onclick = (ev) => { ev.preventDefault(); showPage('home'); };
   document.querySelectorAll('.tab').forEach((t) => { t.onclick = () => showPage(t.dataset.tab); });
   $('#planPdfBtn').onclick = async () => {
     if (!state.assessment) { intake(state); return; }

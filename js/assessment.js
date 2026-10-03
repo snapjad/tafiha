@@ -263,10 +263,12 @@ export function runAssessment(prev = {}, opts = {}) {
       let html;
       if (step.intro) {
         html = `
-          <div class="onb-hero lockup"><img class="lockup-icon" src="assets/brand/tafiha-icon-rounded.svg" alt="" width="72" height="72"><img class="wordmark" src="assets/brand/tafiha-logo-transparent-dark.svg" alt="طفّيها" width="132" height="76"></div>
+          ${opts.onHome
+            ? '<a class="onb-hero lockup" href="./" data-home aria-label="طفّيها، البداية"><img class="lockup-icon" src="assets/brand/tafiha-icon-rounded.svg" alt="" width="72" height="72"><img class="wordmark" src="assets/brand/tafiha-logo-transparent-dark.svg" alt="" width="132" height="76"></a>'
+            : '<div class="onb-hero lockup"><img class="lockup-icon" src="assets/brand/tafiha-icon-rounded.svg" alt="" width="72" height="72"><img class="wordmark" src="assets/brand/tafiha-logo-transparent-dark.svg" alt="طفّيها" width="132" height="76"></div>'}
           <h1 class="q-title">خلّينا نتعرّف عليك</h1>
           <p class="sub">نفس أسئلة عيادة الإقلاع، وبالآخر بتاخد تقرير وخطة إلك إنت.</p>
-          <label class="field">اسمك<input name="name" value="${esc(a.name)}" maxlength="24" autocomplete="given-name" placeholder="اختياري"></label>
+          <label class="field">اسمك<input name="name" value="${esc(a.name)}" maxlength="24" autocomplete="given-name" placeholder="اسمك الأول" required aria-required="true"></label>
           <p class="onb-err" role="alert"></p>
           <div class="onb-actions">
             <button class="btn btn-red" data-next>يلا نبلّش</button>
@@ -298,7 +300,7 @@ export function runAssessment(prev = {}, opts = {}) {
     }
 
     function check(step) {
-      if (step.intro) return '';
+      if (step.intro) return (a.name || '').trim().length >= 2 ? '' : 'اكتب اسمك، حتى نعرف شو نناديك.';
       for (const it of step.items) {
         if (it.type === 'num' && !(a[it.id] > 0)) return `«${it.label}» لازم يكون أكبر من صفر.`;
         if (it.type === 'date' && !Number.isFinite(a[it.id])) return 'اختار التاريخ.';
@@ -363,6 +365,12 @@ export function runAssessment(prev = {}, opts = {}) {
       });
       el.querySelector('[data-next]')?.addEventListener('click', () => next(el, step));
       el.querySelector('[data-login]')?.addEventListener('click', () => leave({ __login: true }));
+      el.querySelector('[data-home]')?.addEventListener('click', (ev) => { ev.preventDefault(); leave({ __home: true }); });
+      const nameInput = step.intro && el.querySelector('input[name="name"]');
+      if (nameInput) {
+        nameInput.addEventListener('keydown', (ev) => { if (ev.key === 'Enter') { ev.preventDefault(); next(el, step); } });
+        nameInput.addEventListener('input', () => { el.querySelector('.onb-err').textContent = ''; });
+      }
       setTimeout(() => (el.querySelector('input:not([type=number])') || el.querySelector('button[aria-pressed="true"], button[data-q], button[data-m], [data-next]'))?.focus({ preventScroll: true }), 60);
     }
 

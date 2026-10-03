@@ -1,21 +1,22 @@
 /* طفّيها — first-launch welcome (js/onboarding.js), from the Claude Design «Tafiha Onboarding» screens */
 .intro {
-  position: fixed; inset: 0; z-index: 95; display: flex; justify-content: center;
-  background: var(--bg); color: var(--ink); transition: background var(--t) var(--out), color var(--t) var(--out);
-  touch-action: pan-y; overscroll-behavior: contain;
+  position: fixed; inset: 0; z-index: 95; overflow: hidden;
+  background: var(--bg); animation: fade-in var(--t) var(--out) both;
 }
-.intro[data-theme='dark'] { background: var(--ink); color: #fff; }
+.intro[data-theme='dark'] { background: var(--ink); }
+/* the pages sit side by side; in RTL the next one is to the left */
+.intro-track { display: flex; height: 100%; will-change: transform; touch-action: pan-y; user-select: none; -webkit-user-select: none; }
+.intro-page { flex: 0 0 100%; height: 100%; display: flex; justify-content: center; background: var(--bg); color: var(--ink); }
+.intro-page[data-theme='dark'] { background: var(--ink); color: #fff; }
+.intro-page[inert] * { animation-play-state: paused; }
 .intro-screen {
   width: 100%; max-width: 460px; height: 100%; display: flex; flex-direction: column;
   padding-top: env(safe-area-inset-top);
 }
-.intro-screen > * { animation: rise var(--t) var(--out) both; }
-.intro-screen > :nth-child(2) { animation-delay: 40ms; }
-.intro-screen > :nth-child(3) { animation-delay: 80ms; }
-.intro-screen.fwd .intro-main { animation-name: intro-fwd; }
-.intro-screen.bwd .intro-main { animation-name: intro-bwd; }
-@keyframes intro-fwd { from { opacity: 0; transform: translateX(-24px); } to { opacity: 1; transform: none; } }
-@keyframes intro-bwd { from { opacity: 0; transform: translateX(24px); } to { opacity: 1; transform: none; } }
+/* depth: the content trails its page a little while it moves (--o: -1 … 1, set by js/onboarding.js) */
+.intro-depth { transform: translate3d(calc(var(--o, 0) * -18%), 0, 0); transition: var(--snap, none); }
+.intro-title, .intro-sub { transform: translate3d(calc(var(--o, 0) * -8%), 0, 0); transition: var(--snap, none); }
+.intro.dragging .intro-depth, .intro.dragging .intro-title, .intro.dragging .intro-sub { transition: none; }
 
 .intro-brand { display: flex; justify-content: center; padding-top: 22px; flex: none; }
 .intro-brand img { width: 132px; height: auto; }
@@ -28,10 +29,10 @@
 .intro-main::-webkit-scrollbar { display: none; }
 .intro-title { margin: 0; font-family: var(--f-display); font-weight: 800; font-size: 28px; line-height: 1.4; outline: none; }
 .intro-sub { margin: 6px 0 0; font-size: 15px; line-height: 1.75; color: var(--smoke); text-wrap: pretty; }
-.intro[data-theme='dark'] .intro-main { padding: 0 28px; }
-.intro[data-theme='dark'] .intro-title { font-size: 30px; }
-.intro[data-theme='dark'] .intro-sub { font-size: 16px; color: var(--ash); margin-top: 10px; }
-.intro[data-screen='ready'] .intro-title { font-size: 34px; line-height: 1.35; }
+.intro-page[data-theme='dark'] .intro-main { padding: 0 28px; }
+.intro-page[data-theme='dark'] .intro-title { font-size: 30px; }
+.intro-page[data-theme='dark'] .intro-sub { font-size: 16px; color: var(--ash); margin-top: 10px; }
+.intro-page[data-screen='ready'] .intro-title { font-size: 34px; line-height: 1.35; }
 .intro-mark { display: block; margin-bottom: 10px; }
 .intro-body { flex: 1; display: flex; flex-direction: column; gap: 16px; padding: 18px 0 8px; }
 
@@ -153,7 +154,7 @@
 .intro-dots { display: flex; gap: 6px; margin-bottom: 6px; }
 .intro-dots i { width: 6px; height: 6px; border-radius: 3px; background: var(--ash); transition: width var(--t) var(--out), background var(--t) var(--out); }
 .intro-dots i.on { width: 22px; background: var(--ember); }
-.intro[data-theme='dark'] .intro-dots i:not(.on) { background: #3a3432; }
+.intro-page[data-theme='dark'] .intro-dots i:not(.on) { background: #3a3432; }
 .intro-btn {
   width: 100%; height: 56px; border-radius: 28px; background: var(--ember); color: #fff; display: flex; align-items: center; justify-content: center; gap: 8px;
   font-size: 17px; font-weight: 600; transition: background var(--t-fast), transform var(--t-fast) var(--out);
@@ -167,7 +168,8 @@
 .intro button:focus-visible { outline: 3px solid rgba(225, 38, 28, .4); outline-offset: 3px; }
 
 /* reduced motion: no loops; the ember stays lit and the breathing card shows both counts */
-.intro.still .intro-screen > *, .intro.still .intro-main { animation: none; }
+.intro.still { animation: none; }
+.intro.still .intro-depth, .intro.still .intro-title, .intro.still .intro-sub { transform: none; transition: none; }
 .intro.still .intro-ember { animation: none; fill: var(--ember); }
 .intro.still .intro-smoke { display: none; }
 .intro.still .intro-breath-fill { animation: none; transform: scale(.85); }

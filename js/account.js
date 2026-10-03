@@ -143,11 +143,14 @@ const GATE_PREVIEW = `
     </ul>
   </section>`;
 
+// The logo leads home in these modes; 'required' and 'recovery' are steps that have to be finished.
+const HOME_MODES = ['password', 'login', 'gate', 'welcome'];
+
 // modes: 'gate' (after the interview: make an account to see the report),
 // 'login' (from the first screen: "I have an account"), 'required' (data on this
 // device from before accounts), 'recovery' (opened a reset-password link),
 // 'password' (signed in, changing the password with a code sent to opts.email).
-// Resolves { user } when signed in, or 'back' when someone leaves the login screen.
+// Resolves { user } when signed in, 'back' when someone leaves the login screen, or 'home' (the logo).
 export function runAuth(opts = {}) {
   const mode = opts.mode || 'welcome';
   return new Promise((resolve) => {
@@ -172,7 +175,9 @@ export function runAuth(opts = {}) {
     root.innerHTML = `
       <div class="onb-top auth-top">
         <button class="onb-back" type="button" aria-label="رجوع"><svg class="ico"><use href="#i-arrow" transform="rotate(180 12 12)"/></svg></button>
-        <div class="brand"><img class="wordmark" src="assets/brand/tafiha-logo-transparent-dark.svg" alt="طفّيها" width="84" height="48"></div>
+        ${HOME_MODES.includes(mode)
+          ? '<a class="brand" href="./" data-home aria-label="طفّيها، الصفحة الرئيسية"><img class="wordmark" src="assets/brand/tafiha-logo-transparent-dark.svg" alt="" width="84" height="48"></a>'
+          : '<div class="brand"><img class="wordmark" src="assets/brand/tafiha-logo-transparent-dark.svg" alt="طفّيها" width="84" height="48"></div>'}
         <span class="auth-top-note">كل يوم، خطوة إلك</span>
       </div>
       <div class="onb-body"></div>`;
@@ -190,6 +195,12 @@ export function runAuth(opts = {}) {
       const captchaToken = await Captcha.need(slot);
       try { return await call(captchaToken); } finally { Captcha.reset(slot); }
     }
+
+    // the logo goes home: the app for someone signed in, the start of the journey otherwise
+    root.querySelector('[data-home]')?.addEventListener('click', (ev) => {
+      ev.preventDefault();
+      if (!submitting) finish('home');
+    });
 
     back.onclick = () => {
       if (submitting) return;
