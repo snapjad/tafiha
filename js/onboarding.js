@@ -211,7 +211,9 @@ export function run({ consult = false } = {}) {
       track.style.transition = t;
       track.style.transform = `translate3d(${pos * width + offset}px, 0, 0)`;
       const f = pos + (width ? offset / width : 0);
+      // only the pages next to the current one can be on screen; the rest keep their place
       pages.forEach((p, i) => {
+        if (Math.abs(i - pos) > 1 && offset) return;
         p.style.setProperty('--o', Math.max(-1, Math.min(1, i - f)).toFixed(4));
         p.style.setProperty('--snap', t);
       });
@@ -299,7 +301,12 @@ export function run({ consult = false } = {}) {
       setTimeout(() => { dragged = false; }, 0);
     };
     track.addEventListener('pointerup', end);
-    track.addEventListener('pointercancel', (ev) => { if (drag && ev.pointerId === drag.id) { drag.dx = 0; end(ev); } });
+    // iOS: once a sideways drag has started, the page must not start scrolling under it
+    track.addEventListener('touchmove', (ev) => { if (drag && drag.axis === 'x') ev.preventDefault(); }, { passive: false });
+    // if the system takes the touch away mid-drag, finish it like a release instead of freezing
+    track.addEventListener('pointercancel', end);
+    track.addEventListener('lostpointercapture', end);
+    root.addEventListener('dragstart', (ev) => ev.preventDefault());
 
     root.addEventListener('keydown', (ev) => {
       if (ev.key === 'ArrowLeft') go(pos + 1);

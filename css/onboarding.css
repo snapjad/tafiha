@@ -5,7 +5,12 @@
 }
 .intro[data-theme='dark'] { background: var(--ink); }
 /* the pages sit side by side; in RTL the next one is to the left */
-.intro-track { display: flex; height: 100%; will-change: transform; touch-action: pan-y; user-select: none; -webkit-user-select: none; }
+.intro-track { display: flex; height: 100%; will-change: transform; user-select: none; -webkit-user-select: none; -webkit-touch-callout: none; }
+/* Sideways drags belong to the swipe. touch-action stops at the nearest scroll container (each
+   screen's middle scrolls), so it's set on every element; otherwise the phone takes the gesture
+   halfway and the page snaps back. */
+.intro, .intro * { touch-action: pan-y; }
+.intro img, .intro svg { -webkit-user-drag: none; user-drag: none; pointer-events: none; }
 .intro-page { flex: 0 0 100%; height: 100%; display: flex; justify-content: center; background: var(--bg); color: var(--ink); }
 .intro-page[data-theme='dark'] { background: var(--ink); color: #fff; }
 .intro-page[inert] * { animation-play-state: paused; }
