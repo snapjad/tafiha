@@ -1,5 +1,5 @@
 // طفّيها — offline support. App files (fonts included): network first, cache as fallback.
-const CACHE = 'tafiha-v20';
+const CACHE = 'tafiha-v21';
 const SHELL = [
   './', './index.html', './css/fonts.css', './css/app.css', './manifest.webmanifest',
   './assets/fonts/alexandria-arabic.woff2', './assets/fonts/alexandria-latin-ext.woff2', './assets/fonts/alexandria-latin.woff2', './assets/fonts/big-shoulders-display-latin-ext.woff2', './assets/fonts/big-shoulders-display-latin.woff2', './assets/fonts/readex-pro-arabic.woff2', './assets/fonts/readex-pro-latin-ext.woff2', './assets/fonts/readex-pro-latin.woff2',

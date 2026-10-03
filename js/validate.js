@@ -131,6 +131,7 @@ export function authError(e) {
   if (e.name === 'AuthRetryableFetchError' || e.status === 0 || msg.includes('failed to fetch') || msg.includes('network')) {
     return 'ما في نت أو السيرفر مش راد. تأكد من النت وجرّب كمان مرة.';
   }
+  if (msg.includes('signups_closed')) return 'إنشاء الحسابات موقّف هلأ. جرّب بعدين.';
   if (code === 'captcha_pending') return 'لحظة، عم نتأكد إنك مش روبوت. إذا طلعلك مربع تحت، اكبس عليه وجرّب كمان مرة.';
   if (code === 'captcha_failed' || msg.includes('captcha')) return 'ما قدرنا نتأكد إنك مش روبوت. جرّب كمان مرة.';
   if (code === 'user_already_exists' || code === 'email_exists' || msg.includes('already registered')) {

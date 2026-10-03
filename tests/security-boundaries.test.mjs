@@ -114,3 +114,22 @@ test('every app module is in the offline shell, and the only outside script is T
   assert.equal(directive('frame-src'), "frame-src 'self' https://challenges.cloudflare.com");
   assert.match(index, /<meta name="referrer" content="strict-origin-when-cross-origin">/);
 });
+
+test('the admin page is locked down and never cached for offline use', async () => {
+  const admin = await readFile(new URL('../admin.html', import.meta.url), 'utf8');
+  const csp = admin.match(/http-equiv="Content-Security-Policy" content="([^"]+)"/)[1];
+  assert.match(csp, /default-src 'self'/);
+  assert.match(csp, /object-src 'none'/);
+  assert.match(csp, /base-uri 'none'/);
+  assert.doesNotMatch(csp, /unsafe-eval/);
+  assert.match(admin, /<meta name="robots" content="noindex, nofollow">/);
+  const sw = await readFile(new URL('../sw.js', import.meta.url), 'utf8');
+  assert.doesNotMatch(sw, /admin/);
+  const sql = await readFile(new URL('../supabase/admin.sql', import.meta.url), 'utf8');
+  // every admin function checks the role and the second step on the server
+  for (const fn of sql.matchAll(/create or replace function public\.(tafiha_admin_(?!me)\w+)/g)) {
+    const body = sql.slice(fn.index, sql.indexOf('end $$;', fn.index));
+    assert.match(body, /tafiha_staff_check\(array\['owner'/, `${fn[1]} must check the staff role`);
+  }
+  assert.match(sql, /coalesce\(auth\.jwt\(\) ->> 'aal', 'aal1'\) <> 'aal2'/);
+});

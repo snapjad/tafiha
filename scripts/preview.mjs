@@ -6,7 +6,7 @@ import { fileURLToPath, pathToFileURL } from 'node:url';
 
 const root = fileURLToPath(new URL('../', import.meta.url));
 const mime = { '.html': 'text/html; charset=utf-8', '.js': 'text/javascript; charset=utf-8', '.css': 'text/css; charset=utf-8', '.webmanifest': 'application/manifest+json', '.webp': 'image/webp', '.png': 'image/png', '.svg': 'image/svg+xml', '.woff2': 'font/woff2' };
-const publicPath = /^(?:(?:index|privacy|terms|delete-account)\.html|manifest\.webmanifest|sw\.js|css\/[a-zA-Z0-9_-]+\.css|js\/(?:vendor\/)?[a-zA-Z0-9_-]+\.js|assets\/(?:icons\/|brand\/|store\/)?[a-zA-Z0-9_-]+\.(?:png|webp|svg)|assets\/fonts\/[a-z0-9-]+\.woff2)$/;
+const publicPath = /^(?:(?:index|privacy|terms|delete-account|admin)\.html|manifest\.webmanifest|sw\.js|css\/[a-zA-Z0-9_-]+\.css|js\/(?:vendor\/|admin\/)?[a-zA-Z0-9_-]+\.js|assets\/(?:icons\/|brand\/|store\/)?[a-zA-Z0-9_-]+\.(?:png|webp|svg)|assets\/fonts\/[a-z0-9-]+\.woff2)$/;
 
 export async function createPreview() {
   const realRoot = await realpath(root);
