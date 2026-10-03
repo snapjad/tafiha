@@ -51,20 +51,20 @@ export const TRIGGERS = [
 // quit timeline, filtered per habit. `smoke` = only for burnt tobacco
 // (cigarettes, argileh); `vapeOnly` = shown when nothing burnt was used.
 export const MILESTONES = [
-  { at: 20 * MIN, name: '20 دقيقة', text: 'نبض قلبك وضغطك بلّشوا يرجعوا لطبيعتهم.' },
-  { at: 12 * HOUR, name: '12 ساعة', text: 'أول أكسيد الكربون بدمّك رجع لمستواه الطبيعي.', smoke: true },
-  { at: 48 * HOUR, name: 'يومين', text: 'حاسّة الشم والطعم بلّشت تتحسن.', smoke: true },
-  { at: 72 * HOUR, name: '3 أيام', text: 'أعراض الانسحاب عادةً بتكون بأعلى حالاتها، ومن هون بتبلّش تخف.' },
-  { at: 7 * DAY, name: 'أسبوع', text: 'عدّيت أصعب أسبوع. الرغبات بتصير أقصر وأبعد عن بعض.' },
-  { at: 14 * DAY, name: 'أسبوعين', text: 'دورتك الدموية ورئتك بيبلّشوا يتحسنوا، والمشي والدرج بيصيروا أسهل.', smoke: true },
-  { at: 14 * DAY, name: 'أسبوعين', text: 'نومك وتركيزك بيبلّشوا يرجعوا لطبيعتهم.', vapeOnly: true },
-  { at: 30 * DAY, name: 'شهر', text: 'أغلب أعراض الانسحاب بتكون خفّت كتير أو راحت.' },
-  { at: 90 * DAY, name: '3 شهور', text: 'السعال وضيق النفس بيبلّشوا يخفّوا ورئتك بتشتغل أحسن.', smoke: true },
-  { at: 90 * DAY, name: '3 شهور', text: 'العادة صارت أضعف بكتير والرغبات صارت نادرة.', vapeOnly: true },
-  { at: 365 * DAY, name: 'سنة', text: 'خطر أمراض القلب التاجية صار تقريباً نص خطر المدخّن.', smoke: true },
-  { at: 365 * DAY, name: 'سنة', text: 'سنة كاملة بلا فيب. إنت حارس من زمان.', vapeOnly: true },
-  { at: 5 * 365 * DAY, name: '5 سنين', text: 'خطر الجلطة الدماغية بينزل وبيقرب من خطر اللي عمره ما دخّن.', smoke: true },
-  { at: 10 * 365 * DAY, name: '10 سنين', text: 'خطر سرطان الرئة صار تقريباً نص خطر المدخّن.', smoke: true },
+  { id: '20m', at: 20 * MIN, name: '20 دقيقة', text: 'نبض قلبك وضغطك بلّشوا يرجعوا لطبيعتهم.' },
+  { id: '12h', at: 12 * HOUR, name: '12 ساعة', text: 'أول أكسيد الكربون بدمّك رجع لمستواه الطبيعي.', smoke: true },
+  { id: '2d', at: 48 * HOUR, name: 'يومين', text: 'حاسّة الشم والطعم بلّشت تتحسن.', smoke: true },
+  { id: '3d', at: 72 * HOUR, name: '3 أيام', text: 'أعراض الانسحاب عادةً بتكون بأعلى حالاتها، ومن هون بتبلّش تخف.' },
+  { id: '1w', at: 7 * DAY, name: 'أسبوع', text: 'عدّيت أصعب أسبوع. الرغبات بتصير أقصر وأبعد عن بعض.' },
+  { id: '2w-smoke', at: 14 * DAY, name: 'أسبوعين', text: 'دورتك الدموية ورئتك بيبلّشوا يتحسنوا، والمشي والدرج بيصيروا أسهل.', smoke: true },
+  { id: '2w-vape', at: 14 * DAY, name: 'أسبوعين', text: 'نومك وتركيزك بيبلّشوا يرجعوا لطبيعتهم.', vapeOnly: true },
+  { id: '1m', at: 30 * DAY, name: 'شهر', text: 'أغلب أعراض الانسحاب بتكون خفّت كتير أو راحت.' },
+  { id: '3m-smoke', at: 90 * DAY, name: '3 شهور', text: 'السعال وضيق النفس بيبلّشوا يخفّوا ورئتك بتشتغل أحسن.', smoke: true },
+  { id: '3m-vape', at: 90 * DAY, name: '3 شهور', text: 'العادة صارت أضعف بكتير والرغبات صارت نادرة.', vapeOnly: true },
+  { id: '1y-smoke', at: 365 * DAY, name: 'سنة', text: 'خطر أمراض القلب التاجية صار تقريباً نص خطر المدخّن.', smoke: true },
+  { id: '1y-vape', at: 365 * DAY, name: 'سنة', text: 'سنة كاملة بلا فيب. إنت حارس من زمان.', vapeOnly: true },
+  { id: '5y', at: 5 * 365 * DAY, name: '5 سنين', text: 'خطر الجلطة الدماغية بينزل وبيقرب من خطر اللي عمره ما دخّن.', smoke: true },
+  { id: '10y', at: 10 * 365 * DAY, name: '10 سنين', text: 'خطر سرطان الرئة صار تقريباً نص خطر المدخّن.', smoke: true },
 ];
 
 // Builds a profile from the onboarding answers (and fills anything missing).

@@ -10,6 +10,7 @@ import * as Sync from './sync.js';
 import * as Auth from './account.js';
 import { merge } from './merge.js';
 import { assertAssessment } from './security.js';
+import * as Content from './content.js';
 
 const $ = (sel, root = document) => root.querySelector(sel);
 const RM = matchMedia('(prefers-reduced-motion: reduce)').matches;
@@ -566,7 +567,7 @@ function renderHealth() {
     const cls = done ? 'done' : now ? 'now' : 'later';
     const dot = done ? '<svg class="ico"><use href="#i-check"/></svg>' : '';
     const bar = now ? `<div class="bar"><i style="--p:${next.progress.toFixed(4)}"></i></div>` : '';
-    return `<li class="mile ${cls}"><span class="dot">${dot}</span><div><span class="t">${m.name}${now ? ` · باقي ${S.duration(next.left)}` : ''}</span><p>${m.text}</p>${bar}</div></li>`;
+    return `<li class="mile ${cls}"><span class="dot">${dot}</span><div><span class="t">${m.name}${now ? ` · باقي ${S.duration(next.left)}` : ''}</span><p>${Content.text('milestone', m.id, m.text)}</p>${bar}</div></li>`;
   }).join('');
 }
 
@@ -651,8 +652,34 @@ function renderHeader() {
   $('#openAccount').setAttribute('aria-label', currentUser ? 'حسابي' : 'تسجيل الدخول');
 }
 
+// ---------------------------------------------------------------- team content
+// The announcement (closable) and the day's message come from the admin area.
+function renderContent() {
+  const box = $('#announce');
+  const a = Content.announcement();
+  if (a) {
+    if (box.dataset.id !== a.id) {
+      box.dataset.id = a.id;
+      box.innerHTML = `<div class="announce-body">${a.title ? `<b>${a.title}</b>` : ''}<p>${a.body}</p>
+        ${a.link ? `<a class="announce-link" href="${a.link}" target="_blank" rel="noopener">${a.label}</a>` : ''}</div>
+        <button class="icon-btn" type="button" aria-label="سكّر الإعلان"><svg class="ico"><use href="#i-close"/></svg></button>`;
+      box.querySelector('button').onclick = () => { Content.dismiss(a.id); box.hidden = true; delete box.dataset.id; };
+    }
+    box.hidden = false;
+  } else {
+    box.hidden = true;
+    delete box.dataset.id;
+  }
+  const msg = $('#heroMsg');
+  const day = isPrep() ? 0 : Math.floor(S.elapsed(state) / S.DAY) + 1;
+  const line = Content.daily(day);
+  if (msg.innerHTML !== line) msg.innerHTML = line;
+  msg.hidden = !line;
+}
+
 function renderAll() {
   renderHeader();
+  renderContent();
   renderHero();
   tickClock();
   renderNext();
@@ -1242,7 +1269,12 @@ function start() {
       renderAll();
     }
   }, 1000);
-  document.addEventListener('visibilitychange', () => { if (!document.hidden) renderAll(); });
+  document.addEventListener('visibilitychange', () => {
+    if (document.hidden) return;
+    renderAll();
+    Content.refresh().then((changed) => { if (changed) renderAll(); });
+  });
+  Content.refresh().then((changed) => { if (changed) renderAll(); });
 
   initCraving({
     getState: () => state,

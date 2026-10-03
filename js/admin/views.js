@@ -1,5 +1,6 @@
 // طفّيها — admin sections. Staff see totals and account details, never a person's health answers.
 import { esc, fmtDate, fmtNum, count as plural, ago, ROLE, errorText, confirmDialog, toast } from './util.js';
+import { content } from './content.js';
 
 async function call(ctx, name, args = {}) {
   const { data, error } = await ctx.sb.rpc(name, args);
@@ -249,6 +250,7 @@ async function settings(el, ctx) {
 const ACTION = {
   'user.ban': 'وقّف حساب', 'user.unban': 'رجّع حساب', 'user.delete': 'حذف حساب',
   'staff.set': 'عدّل الفريق', 'staff.remove': 'شال حدا من الفريق', 'config.set': 'غيّر إعداد',
+  'content.save': 'حفظ محتوى', 'content.delete': 'حذف محتوى',
 };
 
 async function audit(el, ctx) {
@@ -277,7 +279,7 @@ export const SECTIONS = [
   { id: 'stats', label: 'الأرقام', roles: ['owner'], render: stats },
   { id: 'users', label: 'الحسابات', roles: ['owner'], render: users },
   { id: 'consult', label: 'اسأل دكتور', roles: ['owner', 'doctor'], render: soon('اسأل دكتور', 'طلبات الاستشارة بتبيّن هون لما نخلّص الخدمة.') },
-  { id: 'content', label: 'المحتوى', roles: ['owner', 'editor'], render: soon('المحتوى والإعلانات', 'النصايح والرسائل والإعلانات بتتعدّل من هون بالمرحلة الجاي.') },
+  { id: 'content', label: 'المحتوى', roles: ['owner', 'editor'], render: content },
   { id: 'team', label: 'الفريق', roles: ['owner'], render: team },
   { id: 'settings', label: 'الإعدادات', roles: ['owner'], render: settings },
   { id: 'audit', label: 'السجل', roles: ['owner'], render: audit },

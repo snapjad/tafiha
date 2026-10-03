@@ -3,6 +3,7 @@
 // Based on urge surfing and the usual quit-support advice (delay, breathe, water, do something else).
 import * as S from './store.js';
 import { TRIGGERS, REASONS } from './plan.js';
+import * as Content from './content.js';
 
 const $ = (sel) => document.querySelector(sel);
 const RM = matchMedia('(prefers-reduced-motion: reduce)').matches;
@@ -20,7 +21,7 @@ const CUES = [
   { id: 'night', label: 'سهر' },
   { id: 'other', label: 'ولا إشي' },
 ];
-const GENERIC = 'غيّر مكانك هلأ، اشرب كاسة مي باردة، وخلّي إيدك مشغولة بإشي.';
+export const GENERIC = 'غيّر مكانك هلأ، اشرب كاسة مي باردة، وخلّي إيدك مشغولة بإشي.';
 
 let ctx = null;
 let root, body, dots, opener;
@@ -136,7 +137,7 @@ function show(step) {
     paint(`
       <h2 class="cv-h">خطتك لهاللحظة</h2>
       <div class="cv-card">
-        <p>${t ? t.plan : GENERIC}</p>
+        <p>${Content.text('craving', t ? t.id : 'other', t ? t.plan : GENERIC)}</p>
       </div>
       ${gumOk ? `<button type="button" class="cv-aid" id="cvGum"><img src="assets/icons/gum.webp" alt=""><span>خذ حبة علكة هلأ</span></button>` : ''}
       ${needPatch ? `<button type="button" class="cv-aid" id="cvPatch"><img src="assets/icons/patch.webp" alt=""><span>ما حطيت لزقة اليوم. حطها هلأ</span></button>` : ''}

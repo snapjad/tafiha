@@ -1,6 +1,7 @@
 // طفّيها — the personal report and quit plan, shown after the interview and from the dashboard.
 import { buildReport, patchStepFor, gumStageFor, WITHDRAWAL, REASONS, APPROACHES, targetText } from './plan.js';
 import { assertAssessment } from './security.js';
+import * as Content from './content.js';
 
 const esc = (v) => String(v ?? '').replace(/[&<>"']/g, (c) => `&#${c.charCodeAt(0)};`);
 const money = (v) => v.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
@@ -242,7 +243,7 @@ export function reportHTML(a) {
 
   ${r.triggers.length ? `<section class="rp-sec">
     <h3>لحظاتك الصعبة وخطة لكل وحدة</h3>
-    <div class="trg">${r.triggers.map((t) => `<div><b>${t.label}</b><p>${t.plan}</p></div>`).join('')}</div>
+    <div class="trg">${r.triggers.map((t) => `<div><b>${t.label}</b><p>${Content.text('craving', t.id, t.plan)}</p></div>`).join('')}</div>
   </section>` : ''}
 
   <section class="rp-sec">

@@ -128,6 +128,24 @@ button, input, select { font: inherit; color: inherit; }
 .adm-log-row code { color: var(--smoke); font-size: 12.5px; overflow-wrap: anywhere; }
 .adm-empty-card p { margin: 0; color: var(--smoke); }
 
+/* content */
+.adm-tabs { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 16px; }
+.adm-tabs button { min-height: 40px; padding: 0 16px; border: 1px solid var(--line); border-radius: 99px; background: var(--paper); cursor: pointer; font-weight: 500; }
+.adm-tabs button[aria-selected='true'] { background: var(--ink); border-color: var(--ink); color: #fff; }
+.adm-tab-body > .adm-note { margin-bottom: 12px; }
+.adm-preview { margin: 0; overflow-wrap: anywhere; }
+textarea { font: inherit; color: inherit; width: 100%; padding: 10px 14px; border: 1px solid var(--line); border-radius: var(--r-sm); background: var(--paper); resize: vertical; line-height: 1.7; }
+textarea:focus-visible { outline: 3px solid rgba(225, 38, 28, .35); outline-offset: 2px; }
+.adm-two { display: grid; gap: 14px; grid-template-columns: repeat(auto-fit, minmax(min(100%, 220px), 1fr)); }
+.adm-rows { display: grid; gap: 0; padding: 6px 14px; margin-bottom: 14px; }
+.adm-row { display: flex; align-items: center; gap: 10px; padding: 8px 0; border-bottom: 1px solid var(--line); }
+.adm-row:last-child { border-bottom: 0; }
+.adm-row-key { flex: none; width: 62px; color: var(--smoke); font-size: 14px; }
+.adm-row input { flex: 1; min-width: 0; min-height: 40px; padding: 0 12px; border: 1px solid transparent; border-radius: var(--r-sm); background: var(--bg); }
+.adm-row input:focus { border-color: var(--line); background: var(--paper); }
+.adm-row .adm-btn { min-height: 38px; padding: 0 12px; }
+.adm-warn { background: var(--filter-soft); color: #5c3b0c; margin-bottom: 12px; box-shadow: none; }
+
 /* dialog and toast */
 .adm-dialog { border: 0; border-radius: var(--r); padding: 22px; width: min(440px, calc(100% - 32px)); box-shadow: 0 30px 80px -30px rgba(27, 23, 22, .5); }
 .adm-dialog::backdrop { background: rgba(27, 23, 22, .45); }

@@ -467,6 +467,21 @@ a.btn { text-decoration: none; }
 .auth-note { margin: 0; color: var(--smoke); text-align: center; font-size: 12px; }
 /* Turnstile: invisible unless a person has to click */
 .auth-captcha { display: flex; justify-content: center; }
+
+/* team content: the announcement above the home grid and the day's message in the hero */
+.announce {
+  display: flex; align-items: flex-start; gap: 10px; margin: 0 0 var(--gap); padding: 14px 16px;
+  border-radius: var(--r); background: var(--filter-soft); border-inline-start: 4px solid var(--filter);
+  animation: rise var(--t) var(--out) both;
+}
+.announce[hidden] { display: none; }
+.announce-body { flex: 1; min-width: 0; }
+.announce-body b { display: block; font-family: var(--f-display); font-weight: 700; }
+.announce-body p { margin: 2px 0 0; line-height: 1.7; overflow-wrap: anywhere; }
+.announce-link { display: inline-block; margin-top: 8px; font-weight: 600; color: var(--ember-deep); }
+.announce .icon-btn { flex: none; }
+.hero-msg { margin: 6px 0 12px; color: var(--smoke); font-size: 14px; line-height: 1.7; text-align: center; }
+.hero-msg[hidden] { display: none; }
 .auth-captcha.show { margin: 6px 0 18px; }
 .auth .onb-err:empty { display: none; }
 .auth .onb-err { font-size: 13px; line-height: 1.8; }
