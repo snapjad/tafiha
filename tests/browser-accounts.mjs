@@ -122,7 +122,7 @@ try {
   await login.getByRole('button', { name: 'سجّل دخول', exact: true }).click();
   await login.getByText('الإيميل أو كلمة السر غلط.', { exact: true }).waitFor();
   await login.getByRole('button', { name: 'نسيت كلمة السر؟' }).click();
-  await login.getByRole('button', { name: 'ابعتلي رسالة الاستعادة' }).click();
+  await login.getByRole('button', { name: 'ابعتلي الرمز' }).click();
   await login.getByLabel('الرمز', { exact: true }).fill('۱۲٣٤٥٦');
   await login.getByLabel('كلمة السر الجديدة', { exact: true }).fill('Test-new-password!');
   await login.evaluate(() => { window.qaPasswordErrorOnce = true; });

@@ -27,7 +27,7 @@ Browser checks need `PLAYWRIGHT_MODULE` (absolute path to Playwright's `index.mj
 Read-only provider check on this date returned: Google disabled, email enabled, phone disabled, email auto-confirm enabled. These settings were not changed.
 
 - Configure the project's Google OAuth client and enable Google in Supabase. No Google secret is available in this codebase.
-- Verify transactional email delivery and reset/confirmation redirects before public launch. Recovery UI and callbacks were tested with a mocked mail flow; no real recovery email was sent in this session. Current templates may send links rather than numeric codes; the UI supports both.
+- ~~Transactional email~~: done 2026-10-03, see "Email" below.
 - Phone is stored in user metadata only. It is not verified and cannot be used to log in yet.
 - Native Capacitor packaging and native OAuth callbacks remain future work. Existing font/PDF CDN dependencies are also unchanged.
 
@@ -59,7 +59,7 @@ Verified in a browser against a fake backend (no real accounts created):
 - the PDF builds from the bundled libraries (4 pages)
 - 2 server writes in total after signing up
 
-Still open: see "External setup" above (SMTP for reset/confirmation emails, the Google OAuth client). Also: legacy device rows aren't deleted when an account is deleted.
+Still open: see "External setup" above (the Google OAuth client).
 
 ## Security Follow-up - 2026-10-02
 
@@ -87,4 +87,11 @@ Client changes:
 - A frame guard.
 - Fonts are self-hosted.
 
-The open items are in the local SECURITY_REVIEW.md: email confirmation (needs SMTP), Turnstile CAPTCHA, HTTP headers through Cloudflare, SPF/CAA, and the HIBP check (Pro).
+The open items are in the local SECURITY_REVIEW.md: Turnstile CAPTCHA, HTTP headers through Cloudflare, CAA, and the HIBP check (Pro).
+
+## Email - 2026-10-03
+- DNS for tafiha.com is on Cloudflare. support@tafiha.com is forwarded by Cloudflare Email Routing.
+- Auth emails go through Resend (domain tafiha.com, region eu-west-1, verified) as Supabase custom SMTP: `smtp.resend.com:465`, user `resend`, sender `طفّيها <no-reply@tafiha.com>`. The password is a Resend "sending access" key limited to tafiha.com; it lives only in Supabase.
+- Templates (confirmation, recovery, email change) are Arabic, RTL, and carry only the 6-digit `{{ .Token }}`, valid 15 minutes. The app's code screen matches (no links).
+- Email confirmation is on (`mailer_autoconfirm=false`). Signup → code screen → `verifyOtp({ type: 'signup' })`. Signing in to an unconfirmed account resends the code and opens the same screen.
+- `tests/live-accounts.mjs` now refuses to run (it needs auto-confirm), which is intended: no test accounts on the live project.

@@ -193,11 +193,11 @@ export function runAuth(opts = {}) {
 
     function heading() {
       const name = opts.name ? ` يا ${esc(opts.name)}` : '';
-      if (view === 'forgot') return ['نسيت كلمة السر؟', 'اكتب إيميلك وبنبعتلك رسالة ترجع فيها لحسابك.'];
+      if (view === 'forgot') return ['نسيت كلمة السر؟', 'اكتب إيميلك وبنبعتلك رمز ترجع فيه لحسابك.'];
       if (view === 'code') {
         return codeType === 'signup'
-          ? ['أكّد إيميلك', `تفقد الرسالة على <b dir="ltr">${esc(email)}</b>. افتح الرابط أو اكتب الرمز إذا موجود.`]
-          : ['تفقد إيميلك', `إذا الإيميل مسجّل، بتوصلك رسالة على <b dir="ltr">${esc(email)}</b>. افتح الرابط أو اكتب الرمز إذا موجود.`];
+          ? ['أكّد إيميلك', `بعتنالك رمز من 6 أرقام على <b dir="ltr">${esc(email)}</b>. اكتبه هون.`]
+          : ['تفقد إيميلك', `إذا الإيميل مسجّل، بيوصلك رمز من 6 أرقام على <b dir="ltr">${esc(email)}</b>.`];
       }
       if (view === 'newpass') return ['كلمة سر جديدة', 'اختار كلمة سر جديدة لحسابك.'];
       if (mode === 'gate') return [`تقريرك جاهز${name}`, 'اعمل حساب حتى تشوفه، وتضل خطتك محفوظة على كل أجهزتك.'];
@@ -209,7 +209,7 @@ export function runAuth(opts = {}) {
       if (view === 'forgot') {
         return `${emailField('au-email', email)}
           <p class="onb-err" role="alert"></p>
-          <button class="btn btn-red auth-submit" type="submit">ابعتلي رسالة الاستعادة</button>`;
+          <button class="btn btn-red auth-submit" type="submit">ابعتلي الرمز</button>`;
       }
       if (view === 'code') {
         return `
@@ -221,7 +221,7 @@ export function runAuth(opts = {}) {
           <p class="onb-err" role="alert"></p>
           <button class="btn btn-red auth-submit" type="submit">${codeType === 'recovery' ? 'غيّر كلمة السر' : 'تأكيد'}</button>
           <button class="link-btn" type="button" data-resend disabled></button>
-          ${codeType === 'recovery' ? '<p class="auth-note">إذا وصلك رابط بدل الرمز، افتحه من هالجهاز.</p>' : ''}`;
+          <p class="auth-note">إذا ما لقيت الرسالة، تفقد مجلد الرسائل غير المرغوبة (Spam).</p>`;
       }
       if (view === 'newpass') {
         return `${passField('au-pass', 'كلمة السر الجديدة', 'new-password', PASSWORD_HINT)}
