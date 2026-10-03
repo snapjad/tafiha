@@ -1,7 +1,8 @@
-// طفّيها — offline support. App files: network first, cache as fallback. Fonts: cache first.
-const CACHE = 'tafiha-v17';
+// طفّيها — offline support. App files (fonts included): network first, cache as fallback.
+const CACHE = 'tafiha-v18';
 const SHELL = [
-  './', './index.html', './css/app.css', './manifest.webmanifest',
+  './', './index.html', './css/fonts.css', './css/app.css', './manifest.webmanifest',
+  './assets/fonts/alexandria-arabic.woff2', './assets/fonts/alexandria-latin-ext.woff2', './assets/fonts/alexandria-latin.woff2', './assets/fonts/big-shoulders-display-latin-ext.woff2', './assets/fonts/big-shoulders-display-latin.woff2', './assets/fonts/readex-pro-arabic.woff2', './assets/fonts/readex-pro-latin-ext.woff2', './assets/fonts/readex-pro-latin.woff2',
   './js/account.js', './js/sb.js', './js/validate.js', './js/security.js', './js/vendor/supabase.js', './js/vendor/html2canvas.js', './js/vendor/jspdf.js',
   './js/app.js', './js/store.js', './js/craving.js', './js/share.js', './js/cigarette.js', './js/smoke.js', './js/assessment.js', './js/plan.js', './js/report.js', './js/merge.js', './js/sync.js', './js/config.js',
   './assets/cig-body.webp', './assets/cig-tip-out.webp', './assets/cig-tip-idle.webp', './assets/cig-tip-hot.webp',
@@ -24,17 +25,6 @@ self.addEventListener('fetch', (e) => {
   const req = e.request;
   if (req.method !== 'GET') return;
   const url = new URL(req.url);
-  // fonts: cache first, so they work offline after the first use
-  if (url.protocol === 'https:' && ['fonts.googleapis.com', 'fonts.gstatic.com'].includes(url.hostname)) {
-    e.respondWith(caches.match(req).then((hit) => hit || fetch(req).then((res) => {
-      if (res.ok || res.type === 'opaque') {
-        const copy = res.clone();
-        e.waitUntil(caches.open(CACHE).then((c) => c.put(req, copy)));
-      }
-      return res;
-    })));
-    return;
-  }
   if (url.origin !== location.origin) return;
   const allowed = new Set(SHELL.map((path) => new URL(path, self.registration.scope).href));
   // OAuth codes, unknown paths and query strings never enter the cache.

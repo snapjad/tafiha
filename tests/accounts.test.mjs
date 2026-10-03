@@ -54,3 +54,12 @@ test('international phone input accepts Arabic digits and explicit country codes
   assert.match(authError({ code: 'invalid_credentials' }), /غلط/);
   assert.match(authError({ status: 429 }), /استنّى/);
 });
+
+test('passwords follow the server rule (8+, a Latin letter and a digit) and common ones are refused', async () => {
+  const { passwordOk, passwordProblem } = await import('../js/validate.js');
+  for (const weak of ['short1', '12345678', 'password', 'abcdefgh', '١٢٣٤٥٦٧٨ab', 'password1', 'Qwerty123', 'tafiha123']) {
+    assert.equal(passwordOk(weak), false, weak);
+    assert.ok(passwordProblem(weak).length > 0, weak);
+  }
+  for (const fine of ['Jad-quits-2026', 'sunflower7', 'k9mPq2xz']) assert.equal(passwordOk(fine), true, fine);
+});

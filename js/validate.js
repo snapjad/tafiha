@@ -103,8 +103,25 @@ export function nationalPart(e164, iso) {
 
 export const isEmail = (s) => /^[^\s@]+@[^\s@.]+(\.[^\s@.]+)*\.[^\s@.]{2,}$/.test(String(s || '').trim());
 
+// Matches the server (Supabase Auth: at least 8 characters, a Latin letter and a digit).
+// The free plan has no breach check, so the most common passwords that would still pass
+// the rule are refused here too.
 export const PASSWORD_MIN = 8;
-export const passwordOk = (s) => String(s || '').length >= PASSWORD_MIN;
+export const PASSWORD_HINT = `${PASSWORD_MIN} أحرف أو أكثر، فيها حرف إنجليزي ورقم`;
+const COMMON = new Set([
+  'password1', 'password12', 'password123', 'passw0rd', 'pass1234', 'abc12345', 'abcd1234', 'a1b2c3d4',
+  'qwerty12', 'qwerty123', 'qwerty1234', '1q2w3e4r', '1qaz2wsx', 'zaq12wsx', 'asdf1234', 'iloveyou1',
+  'welcome1', 'admin123', 'letmein1', 'test1234', '12345678a', '123456789a', 'a12345678', 'aa123456',
+  'jordan123', 'amman123', 'tafiha123', 'tafiha2026',
+]);
+export function passwordProblem(s) {
+  const p = String(s || '');
+  if (p.length < PASSWORD_MIN) return `كلمة السر لازم تكون ${PASSWORD_MIN} أحرف أو أكثر.`;
+  if (!/[A-Za-z]/.test(p) || !/[0-9]/.test(p)) return 'لازم يكون فيها حرف إنجليزي ورقم (0-9) على الأقل.';
+  if (COMMON.has(p.toLowerCase())) return 'كلمة السر هاي مشهورة كثير وسهل حدا يخمّنها. اختار وحدة تانية.';
+  return '';
+}
+export const passwordOk = (s) => !passwordProblem(s);
 
 // the server's error → a sentence people understand
 export function authError(e) {
@@ -118,7 +135,7 @@ export function authError(e) {
     return 'هالإيميل إله حساب. اكبس «عندي حساب» وسجّل دخول.';
   }
   if (code === 'invalid_credentials' || msg.includes('invalid login credentials')) return 'الإيميل أو كلمة السر غلط.';
-  if (code === 'weak_password' || msg.includes('password should be')) return `كلمة السر ضعيفة. خلّيها ${PASSWORD_MIN} أحرف أو أكثر، وما تكون سهلة.`;
+  if (code === 'weak_password' || msg.includes('password should be')) return `كلمة السر ضعيفة: لازم تكون ${PASSWORD_HINT}، وما تكون سهلة.`;
   if (code === 'same_password') return 'هاي نفس كلمة السر القديمة. اختار وحدة جديدة.';
   if (code === 'email_address_invalid' || msg.includes('invalid format') || msg.includes('email address') && msg.includes('invalid')) return 'الإيميل مش مزبوط.';
   if (code === 'email_not_confirmed') return 'لازم تأكد إيميلك أول.';

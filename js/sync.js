@@ -1,9 +1,13 @@
-// Account and legacy-device sync share merge rules and one Supabase client.
+// Sync of a person's journey across their devices, through their account only.
+// Without an account the journey stays on this device (nothing is sent anywhere);
+// the anonymous pre-accounts endpoints are closed on the server (supabase/hardening.sql).
+// A copy synced before accounts existed can still be moved into the account once.
 import { merge, touch, snapshot, same } from './merge.js';
 import { client, configured } from './sb.js';
 import { assertState, assertRemote } from './security.js';
 
 const LS = 'tafiha.sync';
+const CHANNEL = /^tf-[0-9a-f]{64}$/;
 let api, sb, chan, meta, snap, controller;
 let userId = null;
 let timer = 0;
@@ -18,7 +22,7 @@ const key = () => userId ? `${LS}:${userId}` : LS;
 
 export const enabled = configured;
 export const getStatus = () => status;
-export const linked = () => !!(userId || meta?.key);
+export const linked = () => !!userId;
 export function getLegacyKey() {
   try { return JSON.parse(localStorage.getItem(LS) || '{}').key || null; } catch { return null; }
 }
@@ -27,14 +31,6 @@ export function retireLegacyLink() {
 }
 function setStatus(s) { status = s; api?.onStatus?.(s); }
 function saveMeta() { localStorage.setItem(key(), JSON.stringify(meta)); }
-function newKey() {
-  const b = crypto.getRandomValues(new Uint8Array(32));
-  return btoa(String.fromCharCode(...b)).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
-}
-async function sha(text) {
-  const d = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(text));
-  return [...new Uint8Array(d)].map((x) => x.toString(16).padStart(2, '0')).join('');
-}
 function rpc(name, args) { return sb.rpc(name, args).abortSignal(controller.signal); }
 
 export function stop() {
@@ -46,9 +42,17 @@ export function stop() {
   chan = null;
   busy = again = ready = false;
 }
+
+// The account's realtime channel has a secret name from the server (an HMAC of the user id),
+// so nobody else can listen for its pings or send fake ones. Pings carry only a revision.
 async function subscribe(run) {
-  if (!linked()) return;
-  const name = userId ? `tf-account-${userId}` : `tf-${(await sha(`${meta.key}:ch`)).slice(0, 32)}`;
+  if (!userId) return;
+  let name;
+  try {
+    const { data, error } = await rpc('tafiha_me_channel', {});
+    if (error || typeof data !== 'string' || !CHANNEL.test(data)) return; // sync still works on focus and reconnect
+    name = data;
+  } catch { return; }
   if (run !== generation) return;
   if (chan) sb.removeChannel(chan);
   chan = sb.channel(name, { config: { broadcast: { self: false } } })
@@ -59,6 +63,7 @@ async function subscribe(run) {
       refresh();
     }).subscribe();
 }
+
 export async function initSync(opts) {
   stop();
   const run = generation;
@@ -66,10 +71,10 @@ export async function initSync(opts) {
   api = opts;
   userId = opts.userId || null;
   lastBroadcast = 0;
-  try { meta = { key: null, rev: 0, ...JSON.parse(localStorage.getItem(key()) || '{}') }; }
-  catch { meta = { key: null, rev: 0 }; }
+  try { meta = { rev: 0, ...JSON.parse(localStorage.getItem(key()) || '{}') }; }
+  catch { meta = { rev: 0 }; }
   snap = snapshot(assertState(api.getState()));
-  if (!enabled()) { setStatus('off'); return false; }
+  if (!enabled() || !userId) { setStatus('off'); return true; } // no account: this device only
   const online = () => refresh();
   const visible = () => { if (!document.hidden) refresh(); };
   window.addEventListener('online', online);
@@ -82,8 +87,6 @@ export async function initSync(opts) {
     const nextClient = await client();
     if (run !== generation) return false;
     sb = nextClient;
-    if (!userId && !meta.key && api.getState()) { meta.key = newKey(); saveMeta(); }
-    if (!linked()) { ready = true; setStatus('ok'); return true; }
     const ok = await pull();
     if (run !== generation) return false;
     subscribe(run);
@@ -94,32 +97,36 @@ export async function initSync(opts) {
     return false;
   }
 }
+
 export function changed(state) {
   assertState(state);
   snap = touch(state, snap);
-  if (!sb) return;
-  if (!userId && !meta.key) { meta.key = newKey(); saveMeta(); subscribe(generation); }
+  if (!sb || !userId) return;
   schedule();
 }
+
 function schedule(ms = 700) {
   clearTimeout(timer);
   timer = setTimeout(() => { if (ready) push(); else refresh(); }, ms);
 }
+
 async function refresh() {
+  if (!userId) return;
   if (!sb) { if (api) await initSync(api); return; }
-  if (linked()) await pull();
+  await pull();
 }
+
 async function pull() {
   const run = generation;
-  if (!sb || !linked()) return false;
+  if (!sb || !userId) return false;
   try {
-    const { data, error } = await rpc(userId ? 'tafiha_me_pull' : 'tafiha_pull', userId ? {} : { k: meta.key });
+    const { data, error } = await rpc('tafiha_me_pull', {});
     if (error) throw error;
     if (run !== generation) return false;
     assertRemote(data);
     if (data && data.rev < meta.rev && ready) return true;
     let merged = merge(api.getState(), data?.data);
-    if (userId && meta.legacyKey) {
+    if (meta.legacyKey) {
       const old = await rpc('tafiha_pull', { k: meta.legacyKey });
       if (old.error) throw old.error;
       if (run !== generation) return false;
@@ -146,6 +153,7 @@ async function pull() {
     return false;
   }
 }
+
 // Best effort; the key stays in meta until the server confirms, so it's retried on the next open.
 async function retireLegacyRow(run) {
   const k = meta?.retireKey;
@@ -157,8 +165,9 @@ async function retireLegacyRow(run) {
     saveMeta();
   } catch { /* retried on the next open */ }
 }
+
 async function push() {
-  if (!sb || !linked() || !ready) return false;
+  if (!sb || !userId || !ready) return false;
   if (busy) { again = true; return false; }
   busy = true;
   const run = generation;
@@ -169,9 +178,7 @@ async function push() {
       const local = api.getState();
       if (!local) { setStatus('ok'); saved = true; break; }
       const payload = JSON.parse(JSON.stringify(assertState(local)));
-      const args = { d: payload, base: meta.rev };
-      if (!userId) args.k = meta.key;
-      const { data: n, error } = await rpc(userId ? 'tafiha_me_push' : 'tafiha_push', args);
+      const { data: n, error } = await rpc('tafiha_me_push', { d: payload, base: meta.rev });
       if (error) throw error;
       if (run !== generation) return false;
       if (n > 0) {
@@ -200,7 +207,9 @@ async function push() {
   }
   return saved;
 }
+
 export async function flush() {
+  if (!userId) return true; // nothing to send without an account
   clearTimeout(timer);
   if (!ready && !await pull()) return false;
   const run = generation;
@@ -209,47 +218,20 @@ export async function flush() {
   clearTimeout(timer);
   return push();
 }
+
 export async function importLegacy(legacyKey) {
   if (!userId || !legacyKey) return true;
-  // Keep the original server row. A failed import can always be retried.
+  // Keep the original server row until the account copy is saved. A failed import can be retried.
   meta.legacyKey = legacyKey;
   saveMeta();
   ready = false;
   if (!await pull()) return false;
   return flush();
 }
-export async function makeCode() {
-  if (userId) throw new Error('Sign in on the other device instead');
-  if (!await flush()) throw new Error('Sync failed');
-  const { data, error } = await rpc('tafiha_make_code', { k: meta.key });
-  if (error) throw error;
-  if (typeof data !== 'string' || !/^[A-Z2-9]{8}$/.test(data)) throw new Error('Invalid pairing code');
-  return data;
-}
-export async function claimCode(code) {
-  if (userId) throw new Error('Legacy pairing is only available outside an account');
-  const run = generation;
-  const { data: legacyKey, error } = await rpc('tafiha_claim_code', { c: code });
-  if (error) throw error;
-  if (run !== generation || !legacyKey) return false;
-  if (!/^[A-Za-z0-9_-]{43}$/.test(legacyKey)) throw new Error('Invalid pairing key');
-  const { data, error: e2 } = await rpc('tafiha_pull', { k: legacyKey });
-  if (e2) throw e2;
-  if (run !== generation) return false;
-  assertRemote(data);
-  if (!data) return false;
-  // In-flight work for the old link must not update the newly linked journey.
-  const options = api;
-  stop();
-  meta = { key: legacyKey, rev: data?.rev || 0 };
-  saveMeta();
-  if (data?.data) { snap = snapshot(data.data); api.setState(data.data); }
-  await initSync(options);
-  return true;
-}
+
 export function forget() {
   stop();
   localStorage.removeItem(key());
-  meta = { key: null, rev: 0 };
+  meta = { rev: 0 };
   snap = null;
 }

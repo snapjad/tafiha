@@ -757,12 +757,7 @@ function openSettings() {
     <form class="form" id="setForm" novalidate>
       <fieldset class="fs"><legend>أجهزتك</legend>
         <p class="sync-line" id="syncLine"><span class="sync-dot" data-s="${Sync.getStatus()}"></span><span>${SYNC_LABEL[Sync.getStatus()] || ''}</span></p>
-        ${currentUser ? '<p class="card-sub">سجّل دخول بنفس الحساب على جهازك التاني.</p>' : `
-        <div class="row2">
-          <button type="button" class="btn btn-ink" id="linkMake" ${Sync.enabled() ? '' : 'disabled'}>اربط جهاز تاني</button>
-          <button type="button" class="btn btn-soft" id="linkClaim" ${Sync.enabled() ? '' : 'disabled'}>عندي رمز</button>
-        </div>
-        <div id="linkArea"></div>`}
+        <p class="card-sub">${currentUser ? 'سجّل دخول بنفس الحساب على جهازك التاني.' : 'بدون حساب، رحلتك بتضل على هالجهاز بس. اعمل حساب من «حسابي» حتى تنحفظ وتتزامن.'}</p>
       </fieldset>
       <fieldset class="fs"><legend>إنت</legend>
         <label class="field">اسمك<input name="name" value="${esc(s.name)}" maxlength="24" autocomplete="given-name"></label>
@@ -804,53 +799,6 @@ function openSettings() {
       </div>
     </form>`, (sheet) => {
     const f = $('#setForm', sheet);
-    const area = $('#linkArea', sheet);
-    let countdown = 0;
-    if (!currentUser) {
-    $('#linkMake', sheet).onclick = async () => {
-      clearInterval(countdown);
-      area.innerHTML = '<p class="card-sub">عم جهّز الرمز…</p>';
-      try {
-        const code = await Sync.makeCode();
-        const until = Date.now() + 10 * 60000;
-        area.innerHTML = `<div class="pair-code" dir="ltr">${code.slice(0, 4)}-${code.slice(4)}</div>
-          <p class="card-sub">افتح طفّيها على جهازك التاني، واختار «عندي بيانات على جهاز تاني» أو «عندي رمز»، واكتب هالرمز.</p>
-          <p class="card-sub" id="pairLeft"></p>`;
-        const tick = () => {
-          const left = Math.max(0, until - Date.now());
-          const el = $('#pairLeft', sheet);
-          if (!el) { clearInterval(countdown); return; }
-          el.textContent = left ? `شغّال لمدة ${Math.floor(left / 60000)}:${String(Math.floor(left / 1000) % 60).padStart(2, '0')}` : 'خلص وقت الرمز. اطلب واحد جديد.';
-          if (!left) clearInterval(countdown);
-        };
-        tick();
-        countdown = setInterval(tick, 1000);
-      } catch (e) {
-        area.innerHTML = '<p class="card-sub">ما قدرت أجهّز رمز. تأكد من النت وجرّب كمان مرة.</p>';
-      }
-    };
-    $('#linkClaim', sheet).onclick = () => {
-      clearInterval(countdown);
-      area.innerHTML = `<p class="card-sub">البيانات على هالجهاز رح تتبدّل ببيانات الجهاز التاني.</p>
-        <div class="row2"><label class="field">الرمز<input id="claimInput" dir="ltr" autocomplete="off" autocapitalize="characters" maxlength="9" placeholder="XXXX-XXXX"></label>
-        <button type="button" class="btn btn-red" id="claimGo" style="align-self:end">اربط</button></div>`;
-      $('#claimInput', sheet).focus();
-      $('#claimGo', sheet).onclick = async () => {
-        const btn = $('#claimGo', sheet);
-        btn.disabled = true;
-        try {
-          const ok = await Sync.claimCode($('#claimInput', sheet).value);
-          if (!ok) { toast('الرمز غلط أو خلص وقته'); btn.disabled = false; return; }
-          closeSheet();
-          renderAll();
-          toast('انربط الجهاز. بياناتك صارت هون');
-        } catch (e) {
-          toast('ما زبط الربط. تأكد من النت');
-          btn.disabled = false;
-        }
-      };
-    };
-    }
     f.addEventListener('change', (ev) => {
       const m = ev.target.name?.match(/^h_(\w+)$/);
       if (m) sheet.querySelector(`[data-h="${m[1]}"]`)?.toggleAttribute('data-off', !ev.target.checked);
@@ -1073,6 +1021,7 @@ async function openAccount() {
       <p class="sync-line" id="syncLine"><span class="sync-dot" data-s="${Sync.getStatus()}"></span><span>${SYNC_LABEL[Sync.getStatus()]}</span></p>
       <button class="btn btn-soft" id="accountPassword">غيّر كلمة السر</button>
       <button class="btn btn-line" id="accountLogout">سجّل خروج</button>
+      <button class="btn btn-line" id="accountLogoutAll">سجّل خروج من كل الأجهزة</button>
       <button class="danger" id="accountDelete">احذف حسابي وبياناتي</button>
       <nav class="legal-links" aria-label="الصفحات القانونية"><a href="privacy.html" target="_blank" rel="noopener">الخصوصية</a><a href="terms.html" target="_blank" rel="noopener">الشروط</a><a href="delete-account.html" target="_blank" rel="noopener">عن حذف الحساب</a></nav>
     </div>`, (sheet) => {
@@ -1104,21 +1053,26 @@ async function openAccount() {
       catch (e) { err.textContent = Auth.authError(e); }
       btn.disabled = false;
     };
-    $('#accountLogout', sheet).onclick = async (ev) => {
-      const btn = ev.currentTarget;
+    const leave = async (btn, scope) => {
       btn.disabled = true;
       leavingAccount = true;
       try {
         const saved = await Sync.flush();
         if (!saved && !await accountChoice('في تعديلات لسه ما تزامنت', 'بتضل نسخة محفوظة على هالجهاز، وبتتزامن لما ترجع تسجّل دخول بنفس الحساب.', 'سجّل خروج', 'خلّيني هون')) return;
         Sync.stop();
-        await Auth.signOut();
+        await Auth.signOut(scope);
         // A synced journey can be restored after login; do not leave health data
         // behind on a shared device. Unsynced copies are kept only after consent.
         if (saved) { S.reset(); Sync.forget(); }
         location.reload();
       } catch (e) { err.textContent = Auth.authError(e); await Sync.initSync(syncOptions()); }
       finally { leavingAccount = false; btn.disabled = false; }
+    };
+    $('#accountLogout', sheet).onclick = (ev) => leave(ev.currentTarget, 'local');
+    $('#accountLogoutAll', sheet).onclick = async (ev) => {
+      const btn = ev.currentTarget;
+      if (!await accountChoice('تطلع من كل الأجهزة؟', 'كل جهاز مسجّل بحسابك رح يطلع منه، وهالجهاز كمان. استعملها إذا ضاع جوالك أو شكّيت إنه حدا تاني دخل على حسابك.', 'اطلع من كل الأجهزة', 'إلغاء')) return;
+      leave(btn, 'global');
     };
     $('#accountDelete', sheet).onclick = async (ev) => {
       const btn = ev.currentTarget;
@@ -1168,6 +1122,12 @@ async function welcome(error) {
 }
 
 async function boot() {
+  // Never run inside someone else's page: a framing site could trick people into
+  // clicking (clickjacking). GitHub Pages can't send a frame-ancestors header.
+  if (window.top !== window.self) {
+    document.getElementById('bootStatus').innerHTML = '<p>طفّيها بيشتغل بصفحته بس.</p><a class="btn btn-red" href="https://tafiha.com/" target="_top" rel="noopener">افتح طفّيها</a>';
+    return;
+  }
   if ('serviceWorker' in navigator && location.protocol !== 'file:') {
     navigator.serviceWorker.register('sw.js').catch(() => {});
   }

@@ -6,7 +6,7 @@ import { client, configured } from './sb.js';
 import { SUPABASE_URL, SUPABASE_ANON } from './config.js';
 import {
   COUNTRIES, country, flag, guessCountry, parsePhone, nationalPart,
-  isEmail, passwordOk, PASSWORD_MIN, authError, latinDigits,
+  isEmail, passwordOk, passwordProblem, PASSWORD_HINT, authError, latinDigits,
 } from './validate.js';
 
 export { configured, authError };
@@ -29,9 +29,11 @@ export async function onAuthChange(cb) {
   return () => data.subscription.unsubscribe();
 }
 
-export async function signOut() {
+// 'local' ends this device's session; 'global' ends every session of the account
+// (a lost or stolen phone): the server checks the session on every data call.
+export async function signOut(scope = 'local') {
   const c = await client();
-  const { error } = await c.auth.signOut({ scope: 'local' });
+  const { error } = await c.auth.signOut({ scope });
   if (error) throw error;
 }
 
@@ -215,14 +217,14 @@ export function runAuth(opts = {}) {
             <label for="au-code">الرمز</label>
             <input id="au-code" name="code" class="otp-input" dir="ltr" inputmode="numeric" autocomplete="one-time-code" maxlength="8" placeholder="••••••">
           </div>
-          ${codeType === 'recovery' ? passField('au-pass', 'كلمة السر الجديدة', 'new-password', `${PASSWORD_MIN} أحرف أو أكثر`) : ''}
+          ${codeType === 'recovery' ? passField('au-pass', 'كلمة السر الجديدة', 'new-password', PASSWORD_HINT) : ''}
           <p class="onb-err" role="alert"></p>
           <button class="btn btn-red auth-submit" type="submit">${codeType === 'recovery' ? 'غيّر كلمة السر' : 'تأكيد'}</button>
           <button class="link-btn" type="button" data-resend disabled></button>
           ${codeType === 'recovery' ? '<p class="auth-note">إذا وصلك رابط بدل الرمز، افتحه من هالجهاز.</p>' : ''}`;
       }
       if (view === 'newpass') {
-        return `${passField('au-pass', 'كلمة السر الجديدة', 'new-password', `${PASSWORD_MIN} أحرف أو أكثر`)}
+        return `${passField('au-pass', 'كلمة السر الجديدة', 'new-password', PASSWORD_HINT)}
           <p class="onb-err" role="alert"></p>
           <button class="btn btn-red auth-submit" type="submit">احفظ كلمة السر</button>`;
       }
@@ -240,7 +242,7 @@ export function runAuth(opts = {}) {
         </div>
         ${phoneField('au-phone')}
         ${emailField('au-email', email)}
-        ${passField('au-pass', 'كلمة السر', 'new-password', `${PASSWORD_MIN} أحرف أو أكثر`)}
+        ${passField('au-pass', 'كلمة السر', 'new-password', PASSWORD_HINT)}
         <p class="onb-err" role="alert"></p>
         <button class="btn btn-red auth-submit" type="submit">أنشئ حسابي</button>
         <p class="auth-legal">بإنشاء الحساب بتوافق على <a href="terms.html" target="_blank" rel="noopener">شروط الاستخدام</a> و<a href="privacy.html" target="_blank" rel="noopener">سياسة الخصوصية</a>.</p>`;
@@ -396,7 +398,7 @@ export function runAuth(opts = {}) {
             if (!name) return bad('name', 'اكتب اسمك.');
             if (!phone) return bad('phone', phone === false ? 'رقم التلفون مش مزبوط. اختار دولتك واكتب رقمك.' : 'اكتب رقم تلفونك.');
             if (!isEmail(email)) return bad('email', 'الإيميل مش مزبوط.');
-            if (!passwordOk(password)) return bad('password', `كلمة السر لازم تكون ${PASSWORD_MIN} أحرف أو أكثر.`);
+            if (!passwordOk(password)) return bad('password', passwordProblem(password));
             busy(true);
             const c = await client();
             const { data, error } = await c.auth.signUp({
@@ -451,7 +453,7 @@ export function runAuth(opts = {}) {
             const token = latinDigits(form.elements.code.value).replace(/\D/g, '');
             if (!/^\d{6,8}$/.test(token)) return bad('code', 'اكتب الرمز كامل.');
             const password = form.elements.password?.value;
-            if (codeType === 'recovery' && !passwordOk(password)) return bad('password', `كلمة السر لازم تكون ${PASSWORD_MIN} أحرف أو أكثر.`);
+            if (codeType === 'recovery' && !passwordOk(password)) return bad('password', passwordProblem(password));
             busy(true);
             const c = await client();
             const { data, error } = await c.auth.verifyOtp({ email, token, type: codeType });
@@ -473,7 +475,7 @@ export function runAuth(opts = {}) {
           }
           if (view === 'newpass') {
             const password = form.elements.password.value;
-            if (!passwordOk(password)) return bad('password', `كلمة السر لازم تكون ${PASSWORD_MIN} أحرف أو أكثر.`);
+            if (!passwordOk(password)) return bad('password', passwordProblem(password));
             busy(true);
             const c = await client();
             const { data, error } = await c.auth.updateUser({ password });

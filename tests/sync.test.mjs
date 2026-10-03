@@ -10,14 +10,19 @@ globalThis.document = new EventTarget();
 Object.defineProperty(globalThis, 'navigator', { value: { onLine: true }, configurable: true });
 let handle, broadcast;
 let calls = [];
+let channels = [];
+const SECRET_CHANNEL = `tf-${'ab'.repeat(32)}`;
 const fakeClient = {
   rpc(name, args) {
     return { abortSignal(signal) {
       calls.push({ name, args: structuredClone(args) });
+      // the server hands out the account's secret realtime channel name
+      if (name === 'tafiha_me_channel') return Promise.resolve({ data: SECRET_CHANNEL });
       return handle(name, args, signal);
     } };
   },
-  channel() {
+  channel(name) {
+    channels.push(name);
     const channel = { on(type, filter, cb) { broadcast = cb; return channel; }, subscribe() { return channel; }, send() {} };
     return channel;
   },
@@ -29,7 +34,7 @@ const clone = (s) => structuredClone(s);
 const pause = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 let state;
 const options = (userId = 'alice') => ({ userId, getState: () => state, setState: (s) => { state = s; } });
-test.afterEach(() => { Sync.stop(); values.clear(); calls = []; });
+test.afterEach(() => { Sync.stop(); values.clear(); calls = []; channels = []; broadcast = undefined; });
 
 test('failed initial read never uploads over an unseen account', async () => {
   state = createState({ name: 'Local' });
@@ -51,25 +56,25 @@ test('malformed remote journey is rejected without overwriting the local copy', 
   assert.equal(calls.some((c) => c.name.endsWith('push')), false);
 });
 
-test('late old-link writes cannot mutate a newly paired journey', async () => {
-  const oldKey = 'a'.repeat(43), nextKey = 'b'.repeat(43);
-  values.set('tafiha.sync', JSON.stringify({ key: oldKey, rev: 1 }));
-  state = createState({ name: 'Old' });
-  const next = createState({ name: 'New' });
-  let deliver;
-  handle = async (name, args) => {
-    if (name === 'tafiha_claim_code') return { data: nextKey };
-    if (name === 'tafiha_pull') return { data: { data: args.k === oldKey ? clone(state) : clone(next), rev: 1 } };
-    return new Promise((resolve) => { deliver = resolve; });
-  };
-  await Sync.initSync(options(null));
-  const writing = Sync.flush();
-  await pause(0);
-  assert.equal(await Sync.claimCode('ABCDEFGH'), true);
-  deliver({ data: 99 });
-  await writing;
-  assert.equal(state.name, 'New');
-  assert.deepEqual(JSON.parse(values.get('tafiha.sync')), { key: nextKey, rev: 1 });
+test('without an account nothing leaves the device', async () => {
+  state = createState({ name: 'Guest' });
+  handle = async () => ({ data: null });
+  assert.equal(await Sync.initSync(options(null)), true);
+  state.nrt.logs.push(7);
+  Sync.changed(state);
+  assert.equal(await Sync.flush(), true);
+  await pause(800);
+  assert.deepEqual(calls, [], 'no server call of any kind');
+  assert.equal(Sync.getStatus(), 'off');
+});
+
+test('the realtime channel has the secret name from the server, not the user id', async () => {
+  state = createState({ name: 'Alice' });
+  handle = async () => ({ data: null });
+  await Sync.initSync(options('alice-id'));
+  await pause(20);
+  assert.deepEqual(channels, [SECRET_CHANNEL]);
+  assert.equal(channels.some((n) => n.includes('alice-id')), false);
 });
 
 test('revision conflicts merge logs before retrying the write', async () => {

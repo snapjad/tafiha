@@ -70,3 +70,21 @@ See `SECURITY_REVIEW.md` for the current audit and deployment status. Supabase h
 - `supabase/privacy.sql` (applied): `tafiha_me_retire_legacy(k)` deletes a pre-accounts `tafiha_profiles` row. It requires a live session and only works once the caller's account document exists. The client calls it right after the push that saved the merged legacy copy (`meta.legacyKey` → `meta.retireKey`), and retries on the next open until the server confirms. Account deletion therefore erases everything for that person. Apply order for a fresh setup: `schema.sql`, `accounts.sql`, `security.sql`, `privacy.sql`.
 - Legal pages: `privacy.html`, `terms.html` and `delete-account.html` (the deletion URL Google Play needs). They're linked from the signup form and the account sheet. The contact address `support@tafiha.com` must exist before launch.
 - Brand swap is prepared: see `BRAND.md` and `scripts/brand.mjs`.
+
+## Security hardening - 2026-10-03 (Claude)
+
+`supabase/hardening.sql` (applied):
+- Closes the anonymous pre-accounts endpoints.
+- `tafiha_pull` is now session-only.
+- Adds `tafiha_me_channel()` (the secret realtime channel name) and a nightly retention job.
+
+Apply order for a fresh setup: `schema.sql`, `accounts.sql`, `security.sql`, `privacy.sql`, `hardening.sql`.
+
+Client changes:
+- Without an account nothing is synced and the pairing UI is gone.
+- Password rule: 8+ characters with a Latin letter and a digit (matches Supabase), plus a common-password list.
+- "Sign out of all devices".
+- A frame guard.
+- Fonts are self-hosted.
+
+The open items are in the local SECURITY_REVIEW.md: email confirmation (needs SMTP), Turnstile CAPTCHA, HTTP headers through Cloudflare, SPF/CAA, and the HIBP check (Pro).
