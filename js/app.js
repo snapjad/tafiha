@@ -1046,12 +1046,14 @@ async function openAccount() {
       } catch (e) { err.textContent = Auth.authError(e); }
       btn.disabled = false;
     };
+    // a code to the account's email, then the new password (same screens as "forgot password")
     $('#accountPassword', sheet).onclick = async (ev) => {
       const btn = ev.currentTarget;
       btn.disabled = true;
-      try { await Auth.sendPasswordReset(currentUser.email); toast('تفقد إيميلك لرسالة تغيير كلمة السر'); }
-      catch (e) { err.textContent = Auth.authError(e); }
+      const result = await Auth.runAuth({ mode: 'password', email: currentUser.email });
+      if (result?.user) { currentUser = result.user; toast('تغيّرت كلمة السر'); }
       btn.disabled = false;
+      btn.focus({ preventScroll: true });
     };
     const leave = async (btn, scope) => {
       btn.disabled = true;

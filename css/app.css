@@ -465,6 +465,9 @@ a.btn { text-decoration: none; }
 .auth-form > [data-forgot] { justify-self: end; margin-block: -8px; }
 .auth-local { color: var(--smoke); border-top: 1px solid var(--line); padding-top: 12px; }
 .auth-note { margin: 0; color: var(--smoke); text-align: center; font-size: 12px; }
+/* Turnstile: invisible unless a person has to click */
+.auth-captcha { display: flex; justify-content: center; }
+.auth-captcha.show { margin: 6px 0 18px; }
 .auth .onb-err:empty { display: none; }
 .auth .onb-err { font-size: 13px; line-height: 1.8; }
 .auth-submit { display: flex; align-items: center; justify-content: center; gap: 10px; }

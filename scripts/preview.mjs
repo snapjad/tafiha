@@ -17,7 +17,7 @@ export async function createPreview() {
     res.setHeader('Content-Security-Policy', `${csp}; frame-ancestors 'none'`);
     res.setHeader('X-Content-Type-Options', 'nosniff');
     res.setHeader('X-Frame-Options', 'DENY');
-    res.setHeader('Referrer-Policy', 'no-referrer');
+    res.setHeader('Referrer-Policy', 'strict-origin-when-cross-origin');
     res.setHeader('Permissions-Policy', 'camera=(), microphone=(), geolocation=()');
     res.setHeader('Cache-Control', 'no-store');
     if (req.headers.host !== `127.0.0.1:${res.socket.localPort}` && req.headers.host !== `localhost:${res.socket.localPort}`) {

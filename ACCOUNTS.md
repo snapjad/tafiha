@@ -95,3 +95,12 @@ The open items are in the local SECURITY_REVIEW.md: Turnstile CAPTCHA, HTTP head
 - Templates (confirmation, recovery, email change) are Arabic, RTL, and carry only the 6-digit `{{ .Token }}`, valid 15 minutes. The app's code screen matches (no links).
 - Email confirmation is on (`mailer_autoconfirm=false`). Signup → code screen → `verifyOtp({ type: 'signup' })`. Signing in to an unconfirmed account resends the code and opens the same screen.
 - `tests/live-accounts.mjs` now refuses to run (it needs auto-confirm), which is intended: no test accounts on the live project.
+
+## Bot check (Turnstile) - 2026-10-03
+- Cloudflare Turnstile widget `tafiha-auth` (managed mode, hostname tafiha.com). The site key is in `js/config.js`; the secret is only in Supabase (Authentication → Attack Protection → CAPTCHA, provider Turnstile).
+- `js/captcha.js` mounts one widget per auth screen, outside the steps (switching steps doesn't restart it). It solves in the background, shows itself only when a person has to click (`appearance: 'interaction-only'`, Arabic), and is reset after every request because a token works once.
+- Calls that send a token: sign up, password sign-in, password reset, resend code. `verifyOtp`, `updateUser` and Google don't need one.
+- It runs only on `TURNSTILE_HOSTS`. Local previews and tests use mocks. For a QA run with the widget, use Cloudflare's test site keys (`1x00000000000000000000AA` passes, `3x00000000000000000000FF` forces a click) and add `localhost` to the hosts in a scratch copy.
+- CSP allows `https://challenges.cloudflare.com` in `script-src` and `frame-src` only. The page referrer policy is `strict-origin-when-cross-origin` (other sites see the origin, never the path or query).
+- Capacitor later: the app's WebView origin must be one of the widget's hostnames (set Capacitor `server.hostname` to tafiha.com, or add the app hostname to the widget).
+- "Change password" in the account sheet now opens the auth screen in `password` mode: a code to the account email, then the new password. The old `sendPasswordReset` (link-based) is gone.

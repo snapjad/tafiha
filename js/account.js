@@ -4,6 +4,7 @@
 // (international format) in the account's details.
 import { client, configured } from './sb.js';
 import { SUPABASE_URL, SUPABASE_ANON } from './config.js';
+import * as Captcha from './captcha.js';
 import {
   COUNTRIES, country, flag, guessCountry, parsePhone, nationalPart,
   isEmail, passwordOk, passwordProblem, PASSWORD_HINT, authError, latinDigits,
@@ -51,12 +52,6 @@ export async function updateProfile(data) {
   const { data: d, error } = await c.auth.updateUser({ data });
   if (error) throw error;
   return d.user;
-}
-
-export async function sendPasswordReset(email) {
-  const c = await client();
-  const { error } = await c.auth.resetPasswordForEmail(email, { redirectTo: `${here()}?r=reset` });
-  if (error) throw error;
 }
 
 export const firstName = (user) => String(user?.user_metadata?.full_name || user?.user_metadata?.name || '').trim().split(/\s+/)[0] || '';
@@ -127,24 +122,25 @@ function passField(id, label, autocomplete, hint = '') {
     </div>`;
 }
 
-const emailField = (id, value = '') => `
+const emailField = (id, value = '', locked = false) => `
   <div class="field">
     <label for="${id}">إيميلك</label>
-    <input id="${id}" name="email" type="email" inputmode="email" dir="ltr" autocomplete="email" maxlength="120" value="${esc(value)}" placeholder="name@example.com">
+    <input id="${id}" name="email" type="email" inputmode="email" dir="ltr" autocomplete="email" maxlength="120" value="${esc(value)}" placeholder="name@example.com"${locked ? ' readonly' : ''}>
   </div>`;
 
 const RESEND_AFTER = 60;
 
 // modes: 'gate' (after the interview: make an account to see the report),
 // 'login' (from the first screen: "I have an account"), 'required' (data on this
-// device from before accounts), 'recovery' (opened a reset-password link).
+// device from before accounts), 'recovery' (opened a reset-password link),
+// 'password' (signed in, changing the password with a code sent to opts.email).
 // Resolves { user } when signed in, or 'back' when someone leaves the login screen.
 export function runAuth(opts = {}) {
   const mode = opts.mode || 'welcome';
   return new Promise((resolve) => {
     let tab = mode === 'login' ? 'login' : 'signup';
-    let view = mode === 'recovery' ? 'newpass' : 'main';
-    let email = '';
+    let view = mode === 'recovery' ? 'newpass' : mode === 'password' ? 'forgot' : 'main';
+    let email = opts.email || '';
     let codeType = 'recovery';
     let resendTimer = 0;
     let finished = false;
@@ -171,9 +167,24 @@ export function runAuth(opts = {}) {
     document.body.style.overflow = 'hidden';
     const body = root.querySelector('.onb-body');
     const back = root.querySelector('.onb-back');
+    // The bot check lives outside the steps, so switching steps doesn't restart it.
+    const slot = document.createElement('div');
+    slot.className = 'auth-captcha';
+    body.appendChild(slot);
+    Captcha.mount(slot);
+    // Sends a request that needs a bot-check token; a token works once.
+    async function guarded(call) {
+      const captchaToken = await Captcha.need(slot);
+      try { return await call(captchaToken); } finally { Captcha.reset(slot); }
+    }
 
     back.onclick = () => {
       if (submitting) return;
+      if (mode === 'password') {
+        if (view === 'forgot') finish('back');
+        else { view = 'forgot'; render(-1); }
+        return;
+      }
       if (view !== 'main' && view !== 'newpass') { view = 'main'; render(-1); return; }
       if (mode === 'login') finish('back');
     };
@@ -183,6 +194,7 @@ export function runAuth(opts = {}) {
       finished = true;
       unsubscribe();
       clearInterval(resendTimer);
+      Captcha.remove(slot);
       root.classList.add('leave');
       root.inert = true;
       document.body.style.overflow = previousOverflow;
@@ -193,10 +205,11 @@ export function runAuth(opts = {}) {
 
     function heading() {
       const name = opts.name ? ` يا ${esc(opts.name)}` : '';
+      if (view === 'forgot' && mode === 'password') return ['تغيير كلمة السر', 'بنبعتلك رمز على إيميلك، وبعدها بتختار كلمة سر جديدة.'];
       if (view === 'forgot') return ['نسيت كلمة السر؟', 'اكتب إيميلك وبنبعتلك رمز ترجع فيه لحسابك.'];
       if (view === 'code') {
-        return codeType === 'signup'
-          ? ['أكّد إيميلك', `بعتنالك رمز من 6 أرقام على <b dir="ltr">${esc(email)}</b>. اكتبه هون.`]
+        return codeType === 'signup' || mode === 'password'
+          ? [codeType === 'signup' ? 'أكّد إيميلك' : 'تفقد إيميلك', `بعتنالك رمز من 6 أرقام على <b dir="ltr">${esc(email)}</b>. اكتبه هون.`]
           : ['تفقد إيميلك', `إذا الإيميل مسجّل، بيوصلك رمز من 6 أرقام على <b dir="ltr">${esc(email)}</b>.`];
       }
       if (view === 'newpass') return ['كلمة سر جديدة', 'اختار كلمة سر جديدة لحسابك.'];
@@ -207,7 +220,7 @@ export function runAuth(opts = {}) {
 
     function formHTML() {
       if (view === 'forgot') {
-        return `${emailField('au-email', email)}
+        return `${emailField('au-email', email, mode === 'password')}
           <p class="onb-err" role="alert"></p>
           <button class="btn btn-red auth-submit" type="submit">ابعتلي الرمز</button>`;
       }
@@ -252,8 +265,9 @@ export function runAuth(opts = {}) {
       clearInterval(resendTimer);
       const [title, sub] = heading();
       const main = view === 'main';
-      back.style.visibility = (!main && view !== 'newpass') || (main && mode === 'login') ? 'visible' : 'hidden';
-      body.innerHTML = `
+      back.style.visibility = (!main && view !== 'newpass') || (main && mode === 'login') || mode === 'password' ? 'visible' : 'hidden';
+      const tpl = document.createElement('template');
+      tpl.innerHTML = `
         <div class="onb-step auth-step ${dir < 0 ? 'back' : ''}">
           <div class="auth-hero">
             <span class="auth-kicker">${main ? 'رحلتك مع طفّيها' : 'حسابك مع طفّيها'}</span>
@@ -271,7 +285,10 @@ export function runAuth(opts = {}) {
           <form class="auth-form" novalidate>${formHTML()}</form>
           ${main && opts.allowLocal ? '<button class="link-btn auth-local" type="button" data-local>كمّل على هالجهاز</button>' : ''}
         </div>`;
-      wire(body.firstElementChild);
+      const step = tpl.content.firstElementChild;
+      const old = body.querySelector('.auth-step');
+      if (old) old.replaceWith(step); else body.prepend(step);
+      wire(step);
       const titleEl = body.querySelector('h1');
       titleEl.tabIndex = -1;
       titleEl.focus({ preventScroll: true });
@@ -401,11 +418,11 @@ export function runAuth(opts = {}) {
             if (!passwordOk(password)) return bad('password', passwordProblem(password));
             busy(true);
             const c = await client();
-            const { data, error } = await c.auth.signUp({
+            const { data, error } = await guarded((captchaToken) => c.auth.signUp({
               email,
               password,
-              options: { emailRedirectTo: here(), data: { full_name: name, phone: phone.e164, phone_country: phone.iso } },
-            });
+              options: { emailRedirectTo: here(), captchaToken, data: { full_name: name, phone: phone.e164, phone_country: phone.iso } },
+            }));
             if (error) throw error;
             if (data.session) { finish({ user: data.user, name }); return; }
             if (data.user && !data.user.identities?.length) throw Object.assign(new Error('exists'), { code: 'user_already_exists' });
@@ -423,7 +440,7 @@ export function runAuth(opts = {}) {
             if (!password) return bad('password', 'اكتب كلمة السر.');
             busy(true);
             const c = await client();
-            const { data, error } = await c.auth.signInWithPassword({ email, password });
+            const { data, error } = await guarded((captchaToken) => c.auth.signInWithPassword({ email, password, options: { captchaToken } }));
             if (error?.code === 'email_not_confirmed') {
               codeType = 'signup';
               await sendCode();
@@ -496,9 +513,9 @@ export function runAuth(opts = {}) {
 
     async function sendCode() {
       const c = await client();
-      const { error } = codeType === 'recovery'
-        ? await c.auth.resetPasswordForEmail(email, { redirectTo: `${here()}?r=reset` })
-        : await c.auth.resend({ type: 'signup', email, options: { emailRedirectTo: here() } });
+      const { error } = await guarded((captchaToken) => (codeType === 'recovery'
+        ? c.auth.resetPasswordForEmail(email, { redirectTo: `${here()}?r=reset`, captchaToken })
+        : c.auth.resend({ type: 'signup', email, options: { emailRedirectTo: here(), captchaToken } })));
       if (error) throw error;
     }
 

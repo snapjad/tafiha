@@ -47,7 +47,7 @@ test('preview exposes only public app files and sends security headers', async (
     assert.match(home.headers.get('content-security-policy'), /script-src 'self'/);
     assert.match(home.headers.get('content-security-policy'), /frame-ancestors 'none'/);
     assert.equal(home.headers.get('x-content-type-options'), 'nosniff');
-    assert.equal(home.headers.get('referrer-policy'), 'no-referrer');
+    assert.equal(home.headers.get('referrer-policy'), 'strict-origin-when-cross-origin');
     for (const path of ['/.env.local', '/.git/config', '/supabase/schema.sql', '/tests/live-accounts.mjs', '/js/', '/js/%2e%2e%2f.env.local', '/js%5c..%5c.env.local']) {
       const res = await fetch(base + path);
       assert.equal(res.status, 404, path);
@@ -99,4 +99,18 @@ test('offline cache excludes callback URLs, APIs, unknown files and unrelated ca
   sandbox.fetch = async () => { throw new Error('offline'); };
   listeners.fetch({ request, respondWith: (p) => { response = p; } });
   assert.equal((await response).type, 'error', 'A missing JS file must not receive HTML');
+});
+
+test('every app module is in the offline shell, and the only outside script is Turnstile', async () => {
+  const { readdir } = await import('node:fs/promises');
+  const sw = await readFile(new URL('../sw.js', import.meta.url), 'utf8');
+  for (const file of await readdir(new URL('../js/', import.meta.url))) {
+    if (file.endsWith('.js')) assert.ok(sw.includes(`'./js/${file}'`), `sw.js SHELL is missing js/${file}`);
+  }
+  const index = await readFile(new URL('../index.html', import.meta.url), 'utf8');
+  const csp = index.match(/http-equiv="Content-Security-Policy" content="([^"]+)"/)[1];
+  const directive = (name) => csp.split(';').map((d) => d.trim()).find((d) => d.startsWith(`${name} `));
+  assert.equal(directive('script-src'), "script-src 'self' https://challenges.cloudflare.com");
+  assert.equal(directive('frame-src'), "frame-src 'self' https://challenges.cloudflare.com");
+  assert.match(index, /<meta name="referrer" content="strict-origin-when-cross-origin">/);
 });
