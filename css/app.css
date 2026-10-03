@@ -410,13 +410,13 @@ a.btn { text-decoration: none; }
 .boot-status p { margin: 0; }
 /* the logo animation: the tip is ash, glows on two puffs, cools, and a thin thread of smoke rises */
 .boot-tip { animation: boot-ember 2.4s var(--out) infinite; }
-.boot-smoke { fill: none; stroke: var(--ash); stroke-width: 4; stroke-linecap: round; stroke-dasharray: 190; stroke-dashoffset: 190; opacity: 0; animation: boot-smoke 2.4s var(--out) infinite; }
+.boot-smoke { fill: none; stroke: var(--ash); stroke-width: 3; stroke-linecap: round; stroke-dasharray: 160; stroke-dashoffset: 160; opacity: 0; animation: boot-smoke 2.4s var(--out) infinite; }
 @keyframes boot-ember {
   0% { fill: #b9b4b0; } 12.5% { fill: #ff6a2b; } 21% { fill: #e1261c; } 33% { fill: #ff6a2b; }
   42% { fill: #e1261c; } 60% { fill: #a8150f; } 75%, 100% { fill: #b9b4b0; }
 }
 @keyframes boot-smoke {
-  0%, 12.5% { stroke-dashoffset: 190; opacity: 0; } 30% { opacity: .6; }
+  0%, 12.5% { stroke-dashoffset: 160; opacity: 0; } 30% { opacity: .6; }
   52% { stroke-dashoffset: 0; } 75%, 100% { stroke-dashoffset: 0; opacity: 0; }
 }
 @media (prefers-reduced-motion: reduce) {

@@ -85,5 +85,30 @@ export function dismiss(id) {
   localStorage.setItem(DISMISSED, JSON.stringify([id, ...dismissed().filter((x) => x !== id)].slice(0, 50)));
 }
 
+// The public app settings from the admin area (tafiha_app_config), with the last known copy as
+// the fallback. Waits at most `ms` so a slow network never holds up the first screen.
+const CONFIG = 'tafiha.config';
+const CONFIG_DEFAULT = { signups_open: true, consult_enabled: false, min_version: '' };
+export async function appConfig(ms = 2000) {
+  let cached = CONFIG_DEFAULT;
+  if (hasStorage()) {
+    try { cached = { ...CONFIG_DEFAULT, ...JSON.parse(localStorage.getItem(CONFIG) || '{}') }; } catch { /* default */ }
+  }
+  if (!configured()) return cached;
+  const fetchIt = (async () => {
+    const c = await client();
+    const { data, error } = await c.rpc('tafiha_app_config');
+    if (error || !data || typeof data !== 'object') return cached;
+    const next = {
+      signups_open: data.signups_open !== false,
+      consult_enabled: data.consult_enabled === true,
+      min_version: typeof data.min_version === 'string' ? data.min_version : '',
+    };
+    if (hasStorage()) localStorage.setItem(CONFIG, JSON.stringify(next));
+    return next;
+  })().catch(() => cached);
+  return Promise.race([fetchIt, new Promise((resolve) => { setTimeout(() => resolve(cached), ms); })]);
+}
+
 // for tests
 export function _set(list) { items = list.filter(valid); }

@@ -11,6 +11,7 @@ import * as Auth from './account.js';
 import { merge } from './merge.js';
 import { assertAssessment } from './security.js';
 import * as Content from './content.js';
+import * as Onboarding from './onboarding.js';
 
 const $ = (sel, root = document) => root.querySelector(sel);
 const RM = matchMedia('(prefers-reduced-motion: reduce)').matches;
@@ -1137,6 +1138,11 @@ function clearPending() { try { localStorage.removeItem(PENDING); } catch { /* i
 async function welcome(error) {
   let answers = loadPending();
   let mode = answers ? 'gate' : null;
+  // first launch: the welcome screens, once («عندي حساب» there goes straight to signing in)
+  if (!answers && !error && !Onboarding.seen()) {
+    const { consult_enabled: consult } = await Content.appConfig();
+    if (await Onboarding.run({ consult }) === 'login') mode = 'login';
+  }
   for (;;) {
     if (!answers && mode !== 'login') {
       const r = await runAssessment({}, { onLogin: true });

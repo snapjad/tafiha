@@ -1,20 +1,27 @@
 # طفّيها · BRAND.md
 
-دليل مختصر للمطوّرين والمصممين. الدليل الكامل: كتاب الهوية (`Tafiha Brand Book.pdf`، من Claude Design، مش منشور بالموقع).
+دليل مختصر للمطوّرين والمصممين. الدليل الكامل: كتاب الهوية من Claude Design (`Tafiha Brand Book`، مش منشور بالموقع).
 
 ## الفكرة
-الطاء بكلمة «طفّيها» مرسومة كرمز زر الإطفاء ⏻، وألفها سيجارة نازلة جوّا الحلقة: فلتر أصفر، وجسم أبيض، وراس جمرة حمرا.
+الطاء بكلمة «طفّيها» مرسومة كرمز زر الإطفاء ⏻، وألفها سيجارة مايلة 22° بتنطفي جوّا دائرة الزر: فلتر أصفر، وجسم أبيض، وراس جمرة حمرا بنص الدائرة بالزبط.
 
-## ملفات اللوغو (`assets/brand/`)
-| الملف | الاستعمال |
-|---|---|
-| `tafiha-icon.svg` | أيقونة التطبيق 1024×1024، خلفية حبر، مربّع كامل (iOS بيدوّره لحاله) |
-| `tafiha-icon-rounded.svg` | نفس الأيقونة بزوايا مدوّرة، للويب والعروض |
-| `favicon.svg` | فافيكون |
-| `tafiha-logo-transparent-light.svg` | الكلمة العربية، شفاف، للخلفيات الغامقة (الأساسي) |
-| `tafiha-logo-transparent-dark.svg` | الكلمة العربية، شفاف، للخلفيات الفاتحة |
-| `tafiha-mark-transparent-*.svg` | الرمز لحاله، شفاف |
-| `tafiha-en-transparent-*.svg` | الكلمة الإنجليزية tafiha، شفاف |
+## ملفات اللوغو (`assets/brand/`، والـ PNG بتنعمل بـ `node scripts/brand.mjs`)
+**svg/**
+- `tafiha-icon.svg`: أيقونة التطبيق 1024، خلفية حبر، مربّع كامل (iOS بيدوّره لحاله).
+- `tafiha-icon-rounded.svg`: نفس الأيقونة بزوايا مدوّرة، للويب والعروض.
+- `tafiha-android-foreground.svg` و`-background.svg` و`-monochrome.svg`: Android adaptive (108dp). الرمز جوّا الدائرة الآمنة 66dp.
+- `favicon.svg`: نسخة لون واحد.
+- `tafiha-logo-transparent-light.svg`: الكلمة العربية، شفاف، للخلفيات الغامقة (الأساسي).
+- `tafiha-logo-transparent-dark.svg`: الكلمة العربية، شفاف، للخلفيات الفاتحة.
+- `tafiha-logo-mono-black.svg` و`-white.svg`: لون واحد، للطباعة والحفر والتطريز.
+- `tafiha-mark-transparent-*.svg`: الرمز لحاله.
+- `tafiha-en-transparent-*.svg`: الكلمة الإنجليزية tafiha.
+
+**png/**
+- `tafiha-icon-1024/512/192/180.png`: للمتاجر، والـ PWA، وapple-touch-icon.
+- `favicon-32.png` و`favicon-16.png`.
+- `instagram-profile-320.png`.
+- `tafiha-logo-light-2000.png` و`tafiha-logo-dark-2000.png`: شفاف.
 
 - **الألوان الأساسية للوغو:** حلقة وجسم أبيض #FFFFFF، فلتر أصفر #E5A548، راس جمرة #E1261C، على حبر #1B1716.
 - **على أبيض:** الحلقة والحروف حبر #1B1716، والفلتر والراس نفس الألوان.
@@ -25,7 +32,9 @@
 
 ## البناء
 - وحدة السماكة 1u = 24. الشدّة 13. النقاط مربّعات 22 بزاوية 4.
-- فتحة حلقة الطاء 80°. فراغ 3 بين الفلتر والجسم والراس.
+- حلقة الطاء دائرة نصف قطرها 46 (مركزها 306، −46)، وفتحتها 76° من فوق.
+- حرف i بالإنجليزي سيجارة واقفة: فلتر أصفر 31 تحت، جسم 42، وجمرة حمرا 18 مكان النقطة، وبينهم فراغ 3 و12.
+- السيجارة 24×107، مايلة −22° حول مركز الدائرة، والفلتر لجهة الكلمة. فراغ 3 بين الفلتر والجسم والراس.
 
 ## الألوان
 | الاسم | HEX | RGB | CMYK | الدور |
@@ -80,10 +89,12 @@
 | What | Where |
 | --- | --- |
 | Color tokens | `css/app.css` `:root`: `--ember`, `--ember-deep`, `--ember-hot`, `--filter`, `--filter-deep`, `--filter-soft`, `--ink`, `--paper`, `--bg`, `--smoke` (#726C69, text), `--smoke-line` (#7F7976, icons and lines), `--ash`, `--line`. Legal pages: `css/legal.css`. |
-| Fonts | `--f-display` (Alexandria, headings), `--f-body` (Readex Pro), `--f-num` (Big Shoulders Display). Google Fonts `<link>` in `index.html` and the 3 legal pages. |
+| Fonts | `--f-display` (Alexandria, headings), `--f-body` (Readex Pro), `--f-num` (Big Shoulders Display). Self-hosted in `assets/fonts/` (`css/fonts.css`). |
 | Motion | `--out` / `--spring` = `cubic-bezier(.2,.8,.2,1)`; `--t-fast` 120ms, `--t` 240ms, `--t-slow` 420ms; `@keyframes rise` = 12px up + fade; cards stagger 40ms. |
-| Logo animation | Boot splash in `index.html` (`.boot-mark`, `.boot-tip`, `.boot-smoke`, CSS in `app.css`). It loops every 2.4s (1.8s of animation + a pause) until the app is ready. Respects reduced motion. |
-| Wordmark placements | Header (`index.html`, 80px), interview start (lockup with the rounded icon, `js/assessment.js`), sign-in (`js/account.js`, 84px), legal pages (lockup), story image (`js/share.js`, light, 300px), story preview (the mark). |
+| Logo animation | Boot splash in `index.html` (`.boot-mark`, `.boot-tip`, `.boot-smoke`, CSS in `app.css`), the tilted-cigarette mark (rotate −22° around 306,−46). It loops every 2.4s until the app is ready. Welcome screen 1 runs the design's 4.4s version (`.intro-ember`, `.intro-smoke`). Both respect reduced motion. |
+| Welcome screens | `js/onboarding.js` + `css/onboarding.css`, from the Claude Design «Tafiha Onboarding» (6 screens). Shown once on first launch (`localStorage['tafiha.intro']`), before the interview. «اسأل دكتور» (screen 5 and the line on screen 6) only when `consult_enabled` is on in the admin area. |
+| Android icons | `assets/brand/tafiha-android-{foreground,background,monochrome}.svg` (adaptive, 108dp, mark in the 66dp safe circle), for the Capacitor build. |
+| Wordmark placements | Header (`index.html`, 80px), welcome screen 1 (`js/onboarding.js`, light, 132px), interview start (lockup with the rounded icon, `js/assessment.js`), sign-in (`js/account.js`, 84px), legal pages (lockup), admin area, story image (`js/share.js`, light, 300px), story preview (the mark). |
 | App icons | `node scripts/brand.mjs` renders every size from `assets/brand/tafiha-icon.svg`: `icon-192/512`, `icon-maskable-512`, `apple-touch-icon`, `favicon-32`, plus `assets/store/` (Play 512, iOS 1024, Instagram profile 320). It also bumps the service worker cache. |
 | Manifest | `theme_color` #F3F3F4 (red stays rare), `background_color` #1B1716 (ink splash, like the icon). |
 | 3D icons | `blender/make_icons.py` (brand settings above). Run: `blender -b --factory-startup -P blender/make_icons.py -- assets/icons final`. |
