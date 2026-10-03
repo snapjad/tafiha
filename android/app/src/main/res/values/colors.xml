@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- طفّيها brand (BRAND.md) -->
+    <color name="ink">#1B1716</color>
+    <color name="bg">#F3F3F4</color>
+    <color name="ember">#E1261C</color>
+    <color name="colorPrimary">#E1261C</color>
+    <color name="colorPrimaryDark">#1B1716</color>
+    <color name="colorAccent">#E5A548</color>
+</resources>

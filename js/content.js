@@ -62,7 +62,15 @@ export function text(kind, key, fallback) {
 
 // The message for day `day` of the journey (1 = quit day), escaped, or ''.
 export function daily(day) {
-  return day >= 1 ? esc(find('daily', String(day))?.body || '') : '';
+  return esc(dailyText(day));
+}
+// The same as plain text (for notifications, which never render HTML).
+export function dailyText(day) {
+  return day >= 1 ? find('daily', String(day))?.body || '' : '';
+}
+// An edited text as plain text, or the built-in one.
+export function plain(kind, key, fallback) {
+  return find(kind, key)?.body ?? fallback;
 }
 
 function dismissed() {

@@ -3,7 +3,7 @@ const CACHE = 'tafiha-v25';
 const SHELL = [
   './', './index.html', './css/fonts.css', './css/app.css', './css/onboarding.css', './manifest.webmanifest',
   './assets/fonts/alexandria-arabic.woff2', './assets/fonts/alexandria-latin-ext.woff2', './assets/fonts/alexandria-latin.woff2', './assets/fonts/big-shoulders-display-latin-ext.woff2', './assets/fonts/big-shoulders-display-latin.woff2', './assets/fonts/readex-pro-arabic.woff2', './assets/fonts/readex-pro-latin-ext.woff2', './assets/fonts/readex-pro-latin.woff2',
-  './js/account.js', './js/captcha.js', './js/content.js', './js/onboarding.js', './js/sb.js', './js/validate.js', './js/security.js', './js/vendor/supabase.js', './js/vendor/html2canvas.js', './js/vendor/jspdf.js',
+  './js/account.js', './js/captcha.js', './js/content.js', './js/onboarding.js', './js/notify.js', './js/sb.js', './js/validate.js', './js/security.js', './js/vendor/supabase.js', './js/vendor/html2canvas.js', './js/vendor/jspdf.js',
   './js/app.js', './js/store.js', './js/craving.js', './js/share.js', './js/cigarette.js', './js/smoke.js', './js/assessment.js', './js/plan.js', './js/report.js', './js/merge.js', './js/sync.js', './js/config.js',
   './assets/cig-body.webp', './assets/cig-tip-out.webp', './assets/cig-tip-idle.webp', './assets/cig-tip-hot.webp',
   './assets/hero-vape.webp', './assets/icons/coins.webp', './assets/icons/pack.webp', './assets/icons/drop.webp', './assets/icons/heart.webp', './assets/icons/shield.webp', './assets/icons/gum.webp', './assets/icons/patch.webp', './assets/icons/target.webp',

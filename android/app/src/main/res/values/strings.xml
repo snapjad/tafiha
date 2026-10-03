@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">طفّيها</string>
+    <string name="title_activity_main">طفّيها</string>
+    <string name="package_name">com.tafiha.app</string>
+    <string name="custom_url_scheme">com.tafiha.app</string>
+</resources>

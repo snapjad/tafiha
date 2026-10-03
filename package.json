@@ -4,6 +4,15 @@
   "type": "module",
   "scripts": {
     "preview": "node scripts/preview.mjs",
-    "test": "node tests/numbers.test.mjs && node tests/plan.test.mjs && node tests/approach.test.mjs && node tests/report.test.mjs && node tests/merge.test.mjs && node tests/accounts.test.mjs && node tests/sync.test.mjs && node tests/security.test.mjs && node tests/security-boundaries.test.mjs && node tests/savings.test.mjs && node tests/content.test.mjs"
+    "test": "node tests/numbers.test.mjs && node tests/plan.test.mjs && node tests/approach.test.mjs && node tests/report.test.mjs && node tests/merge.test.mjs && node tests/accounts.test.mjs && node tests/sync.test.mjs && node tests/security.test.mjs && node tests/security-boundaries.test.mjs && node tests/savings.test.mjs && node tests/content.test.mjs && node tests/notify.test.mjs"
+  },
+  "dependencies": {
+    "@capacitor/android": "^8.5.2",
+    "@capacitor/app": "^8.1.2",
+    "@capacitor/core": "^8.5.2",
+    "@capacitor/local-notifications": "^8.3.1"
+  },
+  "devDependencies": {
+    "@capacitor/cli": "^8.5.2"
   }
 }

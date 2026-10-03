@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- طفّيها: notification icon (status bar). Android shows it as a white silhouette. -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="24dp"
+    android:height="24dp"
+    android:viewportWidth="176"
+    android:viewportHeight="176">
+    <group android:translateX="-218" android:translateY="155">
+        <path
+            android:pathData="M269.8,-74.3 A46,46 0 1,0 342.2,-74.3"
+            android:strokeColor="#FFFFFF"
+            android:strokeWidth="24" />
+        <group android:rotation="-22" android:pivotX="306" android:pivotY="-46">
+            <path android:fillColor="#FFFFFF" android:pathData="M294,-147h24v36h-24z" />
+            <path android:fillColor="#FFFFFF" android:pathData="M294,-108h24v50h-24z" />
+            <path android:fillColor="#FFFFFF" android:pathData="M294,-55h24v15h-24z" />
+        </group>
+    </group>
+</vector>

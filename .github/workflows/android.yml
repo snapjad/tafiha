@@ -1,0 +1,73 @@
+# طفّيها — builds the Android app (a test APK) in the cloud, so no Android Studio is needed locally.
+# Download it from the run's "Artifacts" (tafiha-debug-apk) and install it on an Android phone.
+name: Android app
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'index.html'
+      - 'privacy.html'
+      - 'terms.html'
+      - 'delete-account.html'
+      - 'manifest.webmanifest'
+      - 'css/**'
+      - 'js/**'
+      - 'assets/**'
+      - 'android/**'
+      - 'capacitor.config.json'
+      - 'package.json'
+      - 'package-lock.json'
+      - 'scripts/build-app.mjs'
+      - '.github/workflows/android.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: android-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 21
+          cache: gradle
+
+      - uses: android-actions/setup-android@v3
+
+      - name: Install
+        run: npm ci
+
+      - name: Tests
+        run: npm test
+
+      - name: Copy the app into the Android project
+        run: |
+          node scripts/build-app.mjs
+          npx cap sync android
+
+      - name: Build the test APK
+        working-directory: android
+        run: |
+          chmod +x gradlew
+          ./gradlew assembleDebug --no-daemon --stacktrace
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: tafiha-debug-apk
+          path: android/app/build/outputs/apk/debug/app-debug.apk
+          retention-days: 30

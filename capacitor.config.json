@@ -1,0 +1,20 @@
+{
+  "appId": "com.tafiha.app",
+  "appName": "طفّيها",
+  "webDir": "www",
+  "server": {
+    "androidScheme": "https",
+    "hostname": "tafiha.com"
+  },
+  "android": {
+    "backgroundColor": "#F3F3F4",
+    "allowMixedContent": false,
+    "webContentsDebuggingEnabled": false
+  },
+  "plugins": {
+    "LocalNotifications": {
+      "smallIcon": "ic_stat_tafiha",
+      "iconColor": "#E1261C"
+    }
+  }
+}

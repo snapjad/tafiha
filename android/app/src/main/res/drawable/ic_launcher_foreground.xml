@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- طفّيها: the mark (assets/brand/tafiha-android-foreground.svg), inside the 66dp safe circle of a 108dp adaptive icon -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="340"
+    android:viewportHeight="340">
+    <group android:translateX="-136" android:translateY="237">
+        <path
+            android:pathData="M269.8,-74.3 A46,46 0 1,0 342.2,-74.3"
+            android:strokeColor="#FFFFFF"
+            android:strokeWidth="24" />
+        <group android:rotation="-22" android:pivotX="306" android:pivotY="-46">
+            <path android:fillColor="#E5A548" android:pathData="M294,-147h24v36h-24z" />
+            <path android:fillColor="#FFFFFF" android:pathData="M294,-108h24v50h-24z" />
+            <path android:fillColor="#E1261C" android:pathData="M294,-55h24v15h-24z" />
+        </group>
+    </group>
+</vector>

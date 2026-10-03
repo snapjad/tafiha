@@ -12,6 +12,7 @@ import { merge } from './merge.js';
 import { assertAssessment } from './security.js';
 import * as Content from './content.js';
 import * as Onboarding from './onboarding.js';
+import * as Notify from './notify.js';
 
 const $ = (sel, root = document) => root.querySelector(sel);
 const RM = matchMedia('(prefers-reduced-motion: reduce)').matches;
@@ -23,7 +24,14 @@ let booted = false;
 let accountBound = false;
 let leavingAccount = false;
 // every local change: stamp it for sync, save it, and queue it for the other devices
-const persist = () => { Sync.changed(state); S.save(state); };
+// every change is saved, synced, and the phone's reminders follow it (a moment later)
+let remindTimer = 0;
+const persist = () => {
+  Sync.changed(state);
+  S.save(state);
+  clearTimeout(remindTimer);
+  remindTimer = setTimeout(() => Notify.reschedule(state), 1500);
+};
 
 // a newer copy arrived from another device
 function applyRemote(next) {
@@ -771,6 +779,76 @@ function num(form, name, fallback) {
   return Number.isFinite(v) && v > 0 ? v : fallback;
 }
 
+// ---------------------------------------------------------------- reminders (the phone app)
+const REMIND_KINDS = [
+  ['danger', 'أوقات الخطر', 'حسب اللي حكيتلنا عنه: القهوة، بعد الأكل، السهر…'],
+  ['milestones', 'الإنجازات', 'كل محطة بتوصلها، ويوم الطفي'],
+  ['daily', 'تذكير يومي', 'رسالة اليوم، واللزقة الصبح'],
+  ['news', 'أخبار طفّيها', 'إعلانات قليلة من فريق طفّيها'],
+];
+
+async function renderReminders(box) {
+  if (!Notify.native()) {
+    box.insertAdjacentHTML('beforeend', '<p class="card-sub">التذكيرات بتشتغل بتطبيق طفّيها على الموبايل.</p>');
+    return;
+  }
+  const allowed = await Notify.permission() === 'granted';
+  const p = Notify.prefs();
+  box.insertAdjacentHTML('beforeend', allowed
+    ? `<div class="remind-list">${REMIND_KINDS.map(([k, t, d]) => `
+        <label class="remind"><span><b>${t}</b><small>${d}</small></span>
+          <input type="checkbox" data-remind="${k}" ${p[k] ? 'checked' : ''}><i aria-hidden="true"></i></label>`).join('')}</div>`
+    : `<p class="card-sub">التذكيرات مطفية. بنذكّرك بأوقات الخطر وبكل إنجاز، وبتقدر توقف أي نوع منها.</p>
+       <button class="btn btn-soft" type="button" data-remind-on>شغّل التذكيرات</button>`);
+  box.querySelectorAll('[data-remind]').forEach((input) => {
+    input.onchange = () => { Notify.setPrefs({ [input.dataset.remind]: input.checked }); Notify.reschedule(state); };
+  });
+  const on = box.querySelector('[data-remind-on]');
+  if (on) on.onclick = async () => {
+    const r = await Notify.ask();
+    if (r === 'granted') { Notify.reschedule(state); box.querySelectorAll(':scope > :not(legend)').forEach((el) => el.remove()); renderReminders(box); }
+    else toast('التذكيرات مطفية من إعدادات التلفون. شغّلها من هناك لطفّيها.');
+  };
+}
+
+// After the plan opens for the first time: ask once, in our own words, before the system asks.
+async function startReminders() {
+  Notify.onOpen((extra) => { if (extra.open === 'craving') openCraving(); });
+  if (!Notify.native()) return;
+  const permission = await Notify.permission();
+  if (permission === 'granted') { Notify.reschedule(state); return; }
+  if (permission !== 'prompt' || Notify.prefs().asked || !state) return;
+  setTimeout(async () => {
+    const yes = await accountChoice('خلّي طفّيها يذكّرك',
+      'بنذكّرك بأوقات الخطر اللي حكيتلنا عنها، وبكل إنجاز بتوصله. بتقدر توقف أي نوع من الإعدادات.',
+      'شغّل التذكيرات', 'بعدين');
+    if (!yes) { Notify.setPrefs({ asked: true }); return; }
+    if (await Notify.ask() === 'granted') { Notify.reschedule(state); toast('تمام، رح نذكّرك'); }
+  }, 1200);
+}
+
+// Android's back button: close what's open, step back, or leave the app from the home page.
+function wireBackButton() {
+  const App = globalThis.Capacitor?.Plugins?.App;
+  if (!Notify.native() || !App) return;
+  App.addListener('backButton', () => {
+    const dialog = document.querySelector('dialog[open]');
+    if (dialog) { dialog.dispatchEvent(new Event('cancel', { cancelable: true })); return; }
+    const intro = document.querySelector('.intro');
+    if (intro) { const b = intro.querySelector('.intro-page:not([inert]) [data-back]'); if (b) b.click(); else App.minimizeApp(); return; }
+    const overlays = [...document.querySelectorAll('.onb')];
+    const top = overlays.at(-1);
+    if (top) { const b = top.querySelector('.onb-back'); if (b && getComputedStyle(b).visibility !== 'hidden') b.click(); else App.minimizeApp(); return; }
+    if (!$('#sheet').hidden) { closeSheet(); return; }
+    const craving = $('#craving');
+    if (craving && !craving.hidden) { $('#cvClose').click(); return; }
+    const report = document.querySelector('.report');
+    if (report) { report.querySelector('.rp-done')?.click(); return; }
+    if (!document.querySelector('.page[data-page="home"]').classList.contains('is-active')) { showPage('home'); return; }
+    App.minimizeApp();
+  });
+}
+
 function openSettings() {
   const s = state;
   const defaults = S.createState().habits;
@@ -787,6 +865,7 @@ function openSettings() {
         <p class="sync-line" id="syncLine"><span class="sync-dot" data-s="${Sync.getStatus()}"></span><span>${SYNC_LABEL[Sync.getStatus()] || ''}</span></p>
         <p class="card-sub">${currentUser ? 'سجّل دخول بنفس الحساب على جهازك التاني.' : 'بدون حساب، رحلتك بتضل على هالجهاز بس. اعمل حساب من «حسابي» حتى تنحفظ وتتزامن.'}</p>
       </fieldset>
+      <fieldset class="fs" id="remindSet"><legend>التذكيرات</legend></fieldset>
       <fieldset class="fs"><legend>إنت</legend>
         <label class="field">اسمك<input name="name" value="${esc(s.name)}" maxlength="24" autocomplete="given-name"></label>
         <label class="field">يوم الإقلاع<input type="datetime-local" name="quitAt" value="${toLocalInput(s.quitAt)}" required></label>
@@ -827,6 +906,7 @@ function openSettings() {
       </div>
     </form>`, (sheet) => {
     const f = $('#setForm', sheet);
+    renderReminders($('#remindSet', sheet));
     f.addEventListener('change', (ev) => {
       const m = ev.target.name?.match(/^h_(\w+)$/);
       if (m) sheet.querySelector(`[data-h="${m[1]}"]`)?.toggleAttribute('data-off', !ev.target.checked);
@@ -1171,9 +1251,11 @@ async function boot() {
     document.getElementById('bootStatus').innerHTML = '<p>طفّيها بيشتغل بصفحته بس.</p><a class="btn btn-red" href="https://tafiha.com/" target="_top" rel="noopener">افتح طفّيها</a>';
     return;
   }
-  if ('serviceWorker' in navigator && location.protocol !== 'file:') {
+  // the phone app has its files on the phone already; only the website needs the offline cache
+  if ('serviceWorker' in navigator && location.protocol !== 'file:' && !Notify.native()) {
     navigator.serviceWorker.register('sw.js').catch(() => {});
   }
+  wireBackButton();
   const guest = S.loadGuest();
   const query = new URL(location.href);
   const recovery = query.searchParams.get('r') === 'reset' || location.hash.includes('type=recovery');
@@ -1302,6 +1384,7 @@ function start() {
   $('#cravingBtn').onclick = (ev) => openCraving(ev.currentTarget);
   // the logo: the home page from anywhere in the app
   $('#homeLogo').onclick = (ev) => { ev.preventDefault(); showPage('home'); };
+  startReminders();
   document.querySelectorAll('.tab').forEach((t) => { t.onclick = () => showPage(t.dataset.tab); });
   $('#planPdfBtn').onclick = async () => {
     if (!state.assessment) { intake(state); return; }
