@@ -465,6 +465,13 @@ a.btn { text-decoration: none; }
 .auth-form > [data-forgot] { justify-self: end; margin-block: -8px; }
 .auth-local { color: var(--smoke); border-top: 1px solid var(--line); padding-top: 12px; }
 .auth-note { margin: 0; color: var(--smoke); text-align: center; font-size: 12px; }
+/* after the interview: what the report holds, locked until there's an account */
+.gate-preview { margin: 0 0 4px; padding: 14px 16px; border-radius: var(--r-sm); background: var(--filter-soft); }
+.gate-preview-title { margin: 0 0 8px; display: flex; align-items: center; gap: 8px; font-family: var(--f-display); font-weight: 700; font-size: 15px; }
+.gate-preview-title .ico { width: 18px; height: 18px; color: var(--filter-deep); }
+.gate-preview ul { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; }
+.gate-preview li { display: flex; align-items: center; justify-content: space-between; gap: 12px; font-size: 14px; line-height: 1.5; }
+.gate-preview li i { flex: none; width: 54px; height: 8px; border-radius: 4px; background: repeating-linear-gradient(90deg, rgba(184, 116, 31, .28) 0 10px, rgba(184, 116, 31, .14) 10px 14px); }
 /* Turnstile: invisible unless a person has to click */
 .auth-captcha { display: flex; justify-content: center; }
 

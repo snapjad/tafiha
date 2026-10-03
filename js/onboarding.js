@@ -202,7 +202,7 @@ export function run({ consult = false } = {}) {
           <div class="intro-foot">
             <div class="intro-dots" role="img" aria-label="${idx + 1} من ${list.length}">${dots}</div>
             ${s.last
-              ? `<button class="intro-btn" type="button" data-start>يلا نبلّش</button>
+              ? `<button class="intro-btn" type="button" data-start>ابدأ استشارتك</button>
                  <button class="intro-btn line" type="button" data-login>عندي حساب</button>
                  <p class="intro-fine">بياناتك إلك. ما في إعلانات، وما منبيعها لحدا.</p>`
               : `<button class="intro-btn" type="button" data-next>التالي${I.next}</button>`}

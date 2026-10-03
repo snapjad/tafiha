@@ -130,6 +130,19 @@ const emailField = (id, value = '', locked = false) => `
 
 const RESEND_AFTER = 60;
 
+// After the interview: what the report holds, locked until there's an account (the reason to make one).
+const LOCK = '<svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><rect x="5" y="10.5" width="14" height="9.5" rx="2"/><path d="M8.5 10.5V8a3.5 3.5 0 0 1 7 0v2.5"/></svg>';
+const GATE_PREVIEW = `
+  <section class="gate-preview" aria-label="شو بتلاقي بتقريرك">
+    <p class="gate-preview-title">${LOCK}<span>شو بتلاقي بتقريرك</span></p>
+    <ul>
+      <li><span>مستوى اعتمادك على النيكوتين</span><i aria-hidden="true"></i></li>
+      <li><span>الطريقة المناسبة إلك ويوم الطفي</span><i aria-hidden="true"></i></li>
+      <li><span>العلاج البديل المناسب وكيف تستعمله</span><i aria-hidden="true"></i></li>
+      <li><span>خطتك أسبوع بأسبوع، وتقرير PDF</span><i aria-hidden="true"></i></li>
+    </ul>
+  </section>`;
+
 // modes: 'gate' (after the interview: make an account to see the report),
 // 'login' (from the first screen: "I have an account"), 'required' (data on this
 // device from before accounts), 'recovery' (opened a reset-password link),
@@ -213,7 +226,7 @@ export function runAuth(opts = {}) {
           : ['تفقد إيميلك', `إذا الإيميل مسجّل، بيوصلك رمز من 6 أرقام على <b dir="ltr">${esc(email)}</b>.`];
       }
       if (view === 'newpass') return ['كلمة سر جديدة', 'اختار كلمة سر جديدة لحسابك.'];
-      if (mode === 'gate') return [`تقريرك جاهز${name}`, 'اعمل حساب حتى تشوفه، وتضل خطتك محفوظة على كل أجهزتك.'];
+      if (mode === 'gate') return [`تقريرك جاهز${name}`, 'اعمل حساب مجاني حتى تفتحه، وتضل خطتك محفوظة على كل أجهزتك.'];
       if (mode === 'required') return ['رحلتك بتكمّل معك', 'سجّل دخول أو اعمل حساب. بعدها بتختار تضيف رحلتك الموجودة إله.'];
       return tab === 'login' ? ['أهلاً فيك من جديد', 'خطتك وإنجازاتك بانتظارك.'] : ['بداية جديدة إلك', 'اعمل حسابك، وخلّي كل خطوة محفوظة.'];
     }
@@ -274,6 +287,7 @@ export function runAuth(opts = {}) {
             <h1 class="q-title">${title}</h1>
             <p class="sub">${sub}</p>
           </div>
+          ${main && mode === 'gate' ? GATE_PREVIEW : ''}
           ${main ? `
             <div class="seg" role="group" aria-label="نوع الدخول" data-tab="${tab}">
               <button type="button" aria-pressed="${tab === 'signup'}" data-tab="signup">حساب جديد</button>

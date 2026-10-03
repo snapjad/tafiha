@@ -199,7 +199,7 @@ export function reportHTML(a) {
   <header class="rp-head">
     <p class="rp-kicker">تقرير الإقلاع · ${dateAr(a.assessedAt || Date.now())}</p>
     <h2>${a.name ? `خطة ${esc(a.name)}` : 'خطتك'} لتطفّيها</h2>
-    <p class="rp-line">${amount}${a.years ? ` · ${YEARS[a.years]}` : ''}</p>
+    <p class="rp-line">${amount}${YEARS[a.years] ? ` · ${YEARS[a.years]}` : ''}</p>
     <div class="rp-tiles">
       <div><span>الاعتماد</span><b>${levelLabel}</b></div>
       <div><span>العلاج</span><b>${form.t}</b></div>
