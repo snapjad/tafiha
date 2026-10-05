@@ -1,5 +1,8 @@
-# طفّيها — builds the Android app (a test APK) in the cloud, so no Android Studio is needed locally.
-# Download it from the run's "Artifacts" (tafiha-debug-apk) and install it on an Android phone.
+# طفّيها — builds the Android app in the cloud, so no Android Studio is needed locally:
+#   tafiha-debug-apk    a test APK to install on an Android phone;
+#   tafiha-play-bundle  the store build (.aab) for Google Play, signed with the upload key in the
+#                       ANDROID_UPLOAD_KEY secret (made once by scripts/release-key.mjs, see PLAY.md).
+# Every run gets a higher version code (the run number), as Google Play requires.
 name: Android app
 
 on:
@@ -33,6 +36,8 @@ jobs:
   build:
     runs-on: ubuntu-latest
     timeout-minutes: 30
+    env:
+      TAFIHA_VERSION_CODE: ${{ github.run_number }}
     steps:
       - uses: actions/checkout@v5
 
@@ -75,3 +80,40 @@ jobs:
           name: tafiha-debug-apk
           path: android/app/build/outputs/apk/debug/app-debug.apk
           retention-days: 30
+
+      # Without the secret (before the key exists) a throwaway key signs the bundle, only to prove
+      # the store build still works; that file isn't kept and could never go to the store.
+      - name: Build the store bundle
+        working-directory: android
+        env:
+          ANDROID_UPLOAD_KEY: ${{ secrets.ANDROID_UPLOAD_KEY }}
+        run: |
+          key="$RUNNER_TEMP/upload-key"
+          mkdir -p "$key"
+          if [ -n "$ANDROID_UPLOAD_KEY" ]; then
+            printf '%s' "$ANDROID_UPLOAD_KEY" | tr -d ' \r\n' | base64 -d > "$key/key.json"
+            pass=$(jq -r .password "$key/key.json")
+            echo "::add-mask::$pass"
+            jq -r .keystore "$key/key.json" | base64 -d > "$key/upload.p12"
+            rm "$key/key.json"
+            echo "TAFIHA_STORE_SIGNED=1" >> "$GITHUB_ENV"
+          else
+            pass=$(openssl rand -hex 24)
+            echo "::add-mask::$pass"
+            printf '%s' "$pass" > "$key/pass"
+            openssl req -x509 -newkey rsa:2048 -sha256 -days 30 -nodes -keyout "$key/key.pem" -out "$key/cert.pem" -subj "/CN=Throwaway" 2> /dev/null
+            openssl pkcs12 -export -inkey "$key/key.pem" -in "$key/cert.pem" -name upload -out "$key/upload.p12" -passout "file:$key/pass"
+            echo "No ANDROID_UPLOAD_KEY secret: signed with a throwaway key (not for the store)."
+          fi
+          keytool -list -storetype pkcs12 -keystore "$key/upload.p12" -storepass "$pass" -alias upload > /dev/null
+          TAFIHA_UPLOAD_STORE="$key/upload.p12" TAFIHA_UPLOAD_PASSWORD="$pass" ./gradlew bundleRelease --no-daemon --stacktrace
+          rm -rf "$key"
+          jarsigner -verify app/build/outputs/bundle/release/app-release.aab | grep -q 'jar verified'
+          echo "Store bundle ready, version code $TAFIHA_VERSION_CODE"
+
+      - if: env.TAFIHA_STORE_SIGNED == '1'
+        uses: actions/upload-artifact@v4
+        with:
+          name: tafiha-play-bundle
+          path: android/app/build/outputs/bundle/release/app-release.aab
+          retention-days: 90

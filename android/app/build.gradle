@@ -7,7 +7,8 @@ android {
         applicationId "com.tafiha.app"
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
-        versionCode 1
+        // CI passes a rising number for every build; Google Play only accepts uploads that go up
+        versionCode((System.getenv('TAFIHA_VERSION_CODE') ?: '1') as int)
         versionName "1.0.0"
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
         aaptOptions {
@@ -16,8 +17,22 @@ android {
             ignoreAssetsPattern = '!.svn:!.git:!.ds_store:!*.scc:.*:!CVS:!thumbs.db:!picasa.ini:!*~'
         }
     }
+    // the upload key Google Play checks; it lives in a GitHub secret, never in the repo (see PLAY.md)
+    def uploadStore = System.getenv('TAFIHA_UPLOAD_STORE')
+    signingConfigs {
+        release {
+            if (uploadStore) {
+                storeFile file(uploadStore)
+                storeType 'pkcs12'
+                storePassword System.getenv('TAFIHA_UPLOAD_PASSWORD')
+                keyAlias 'upload'
+                keyPassword System.getenv('TAFIHA_UPLOAD_PASSWORD')
+            }
+        }
+    }
     buildTypes {
         release {
+            if (uploadStore) signingConfig signingConfigs.release
             minifyEnabled false
             proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.pro'
         }
