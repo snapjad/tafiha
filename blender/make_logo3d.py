@@ -254,5 +254,6 @@ def shoot(name, az, el, dist=11.0):
     print("wrote", scene.render.filepath)
 
 
-shoot("front", 0, 6)
-shoot("angle", -28, 14)
+if os.environ.get("TAFIHA_SCENE_ONLY") != "1":  # make_logo3d_anim.py builds on this scene
+    shoot("front", 0, 6)
+    shoot("angle", -28, 14)

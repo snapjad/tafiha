@@ -48,7 +48,7 @@ function screens(consult) {
             <rect class="intro-ember" x="294" y="-55" width="24" height="15"/>
           </g>
         </svg>
-        <div class="intro-chips"><span>سجاير</span><span>فيب</span><span>أرجيلة</span></div>`,
+        <div class="intro-kinds"><figure><img src="assets/icons/cig.webp" alt="" width="76" height="76"><figcaption>سجاير</figcaption></figure><figure><img src="assets/icons/vape.webp" alt="" width="76" height="76"><figcaption>فيب</figcaption></figure><figure><img src="assets/icons/hookah.webp" alt="" width="76" height="76"><figcaption>أرجيلة</figcaption></figure></div>`,
     },
     {
       id: 'plan', title: 'خطة إلك إنت',

@@ -48,8 +48,11 @@
 .intro-smoke { fill: none; stroke: var(--ash); stroke-width: 3; stroke-linecap: round; stroke-dasharray: 150; stroke-dashoffset: 150; animation: intro-smoke 4.4s linear infinite; }
 @keyframes intro-ember { 0%, 6% { fill: #b9b4b0; } 14% { fill: #ff6a2b; } 22% { fill: #e1261c; } 30% { fill: #ff6a2b; } 40% { fill: #e1261c; } 58% { fill: #a8150f; } 72%, 100% { fill: #b9b4b0; } }
 @keyframes intro-smoke { 0%, 60% { stroke-dashoffset: 150; opacity: 0; } 66% { opacity: .9; } 88% { stroke-dashoffset: 0; opacity: .6; } 100% { stroke-dashoffset: 0; opacity: 0; } }
-.intro-chips { display: flex; gap: 8px; }
-.intro-chips span { padding: 8px 16px; border-radius: 99px; border: 1px solid #3a3432; font-size: 14px; }
+/* what we help quit: three small 3D objects (blender/make_icons.py) with a quiet name under each; not buttons */
+.intro-kinds { display: flex; gap: 22px; margin: 0; }
+.intro-kinds figure { margin: 0; display: flex; flex-direction: column; align-items: center; gap: 2px; }
+.intro-kinds img { width: 76px; height: 76px; }
+.intro-kinds figcaption { font-size: 13px; color: #a59d99; }
 
 /* cards */
 .intro-card { background: var(--paper); border-radius: 24px; padding: 18px 20px; display: flex; flex-direction: column; }
@@ -176,8 +179,10 @@
    after the other with a small spring. It animates 'translate', so the swipe's own transforms keep working. */
 .intro.enter .intro-page:first-child :is(.intro-brand, .intro-hero) { animation: intro-drop 760ms cubic-bezier(.34, 1.36, .64, 1) both; }
 .intro.enter .intro-page:first-child .intro-hero { animation-delay: 90ms; }
-.intro.enter .intro-page:first-child :is(.intro-chips, .intro-title, .intro-sub, .intro-dots, .intro-btn) { animation: intro-rise 620ms cubic-bezier(.34, 1.4, .64, 1) both; }
-.intro.enter .intro-page:first-child .intro-chips { animation-delay: 200ms; }
+.intro.enter .intro-page:first-child :is(.intro-kinds figure, .intro-title, .intro-sub, .intro-dots, .intro-btn) { animation: intro-rise 620ms cubic-bezier(.34, 1.4, .64, 1) both; }
+.intro.enter .intro-page:first-child .intro-kinds figure:nth-child(1) { animation-delay: 180ms; }
+.intro.enter .intro-page:first-child .intro-kinds figure:nth-child(2) { animation-delay: 230ms; }
+.intro.enter .intro-page:first-child .intro-kinds figure:nth-child(3) { animation-delay: 280ms; }
 .intro.enter .intro-page:first-child .intro-title { animation-delay: 280ms; }
 .intro.enter .intro-page:first-child .intro-sub { animation-delay: 360ms; }
 .intro.enter .intro-page:first-child .intro-dots { animation-delay: 460ms; }
@@ -199,6 +204,7 @@
 /* short phones */
 @media (max-height: 700px) {
   .intro-visual { min-height: 190px; gap: 18px; }
+  .intro-kinds img { width: 60px; height: 60px; }
   .intro-hero { width: min(150px, 40vw); }
   .intro-title { font-size: 25px; }
   .intro-foot { padding-top: 10px; gap: 10px; }

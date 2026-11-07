@@ -112,7 +112,11 @@ async function launch() {
   return {
     send,
     on: (f) => listeners.add(f),
-    async close() { ws.close(); proc.kill(); await sleep(300); rmSync(dir, { recursive: true, force: true }); },
+    async close() {
+      ws.close(); proc.kill(); await sleep(300);
+      // Chrome can hold its profile a moment longer; a leftover temp folder isn't worth failing over
+      try { rmSync(dir, { recursive: true, force: true, maxRetries: 5, retryDelay: 300 }); } catch { /* temp folder */ }
+    },
   };
 }
 

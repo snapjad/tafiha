@@ -446,6 +446,65 @@ def icon_target():                                  # red + white
     shoot(sc, cam, "target")
 
 
+def along(ob, yaw, rise=0):
+    """Turns a Z-axis part to lie along `yaw` degrees, lifted `rise` degrees off the ground."""
+    ob.rotation_euler = (0, math.radians(90 - rise), math.radians(yaw))
+
+
+# the three products on the first welcome screen
+def icon_cig():                                     # white + yellow, a red ember tip
+    sc, cam = reset()
+    white, yellow, red = mat("Paper", WHITE), mat("Filter", YELLOW), mat("Ember", RED)
+    r, yaw, rise = 0.2, 28, 32          # propped up on its filter, ember high
+    c, s = math.cos(math.radians(rise)), math.sin(math.radians(rise))
+    d = Vector((c * math.cos(math.radians(yaw)), c * math.sin(math.radians(yaw)), s))
+    for length, at, m in ((0.95, -1.05, yellow), (2.0, 0.45, white), (0.16, 1.53, red)):
+        ob = cyl(r * (0.995 if m is red else 1.0), length, d * at + Vector((0, 0, r)), m, bevel=0.025)
+        along(ob, yaw, rise)
+    shoot(sc, cam, "cig")
+
+
+def icon_vape():                                    # red body, white mouthpiece
+    sc, cam = reset()
+    red, white = mat("Body", RED), mat("Mouth", WHITE)
+    body = box((0.78, 0.42, 1.9), (0, 0, 0.95), red, bevel=0.2, segs=8)
+    tip = box((0.5, 0.26, 0.5), (0, 0, 2.05), white, bevel=0.12, segs=8)
+    for ob in (body, tip):
+        ob.rotation_euler = (0, math.radians(-12), 0)
+    led = cyl(0.07, 0.03, (0.0, -0.215, 0.5), white, verts=48, bevel=0.01)
+    led.rotation_euler = (math.radians(90), math.radians(-12), 0)
+    shoot(sc, cam, "vape")
+
+
+def icon_hookah():                                  # red vase and bowl, white stem, tray and hose
+    sc, cam = reset()
+    red, white = mat("Vase", RED), mat("Metal", WHITE)
+    bpy.ops.mesh.primitive_uv_sphere_add(segments=96, ring_count=48, radius=0.75, location=(0, 0, 0.62))
+    vase = bpy.context.active_object
+    vase.scale = (1, 1, 0.85)
+    smooth(vase)
+    vase.data.materials.append(red)
+    cyl(0.32, 0.22, (0, 0, 1.25), red, bevel=0.06)             # neck
+    cyl(0.09, 1.25, (0, 0, 1.9), white, verts=48, bevel=0.02)  # stem
+    cyl(0.62, 0.07, (0, 0, 2.35), white, bevel=0.03)           # tray
+    cyl(0.2, 0.32, (0, 0, 2.62), red, bevel=0.06)              # bowl
+    cyl(0.28, 0.08, (0, 0, 2.8), red, bevel=0.03)              # bowl rim
+    hose = bpy.data.curves.new("hose", "CURVE")
+    hose.dimensions = "3D"
+    hose.bevel_depth = 0.06
+    hose.bevel_resolution = 6
+    sp = hose.splines.new("BEZIER")
+    pts = [(0.08, 0, 1.75), (0.75, -0.1, 1.95), (1.25, -0.2, 1.2), (1.0, -0.35, 0.06)]
+    sp.bezier_points.add(len(pts) - 1)
+    for bp, p in zip(sp.bezier_points, pts):
+        bp.co = p
+        bp.handle_left_type = bp.handle_right_type = "AUTO"
+    ob = bpy.data.objects.new("hose", hose)
+    sc.collection.objects.link(ob)
+    hose.materials.append(white)
+    shoot(sc, cam, "hookah")
+
+
 for name in ONLY:
     globals()[f"icon_{name}"]()
 print("DONE")
