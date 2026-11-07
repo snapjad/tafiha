@@ -172,6 +172,19 @@
 .intro-fine { margin: 0; font-size: 12px; line-height: 1.6; color: var(--smoke); text-align: center; }
 .intro button:focus-visible { outline: 3px solid rgba(225, 38, 28, .4); outline-offset: 3px; }
 
+/* opening: on the first screen the logo and picture drop in, then the words and the button rise one
+   after the other with a small spring. It animates 'translate', so the swipe's own transforms keep working. */
+.intro.enter .intro-page:first-child :is(.intro-brand, .intro-hero) { animation: intro-drop 760ms cubic-bezier(.34, 1.36, .64, 1) both; }
+.intro.enter .intro-page:first-child .intro-hero { animation-delay: 90ms; }
+.intro.enter .intro-page:first-child :is(.intro-chips, .intro-title, .intro-sub, .intro-dots, .intro-btn) { animation: intro-rise 620ms cubic-bezier(.34, 1.4, .64, 1) both; }
+.intro.enter .intro-page:first-child .intro-chips { animation-delay: 200ms; }
+.intro.enter .intro-page:first-child .intro-title { animation-delay: 280ms; }
+.intro.enter .intro-page:first-child .intro-sub { animation-delay: 360ms; }
+.intro.enter .intro-page:first-child .intro-dots { animation-delay: 460ms; }
+.intro.enter .intro-page:first-child .intro-btn { animation-delay: 540ms; }
+@keyframes intro-drop { from { opacity: 0; translate: 0 -44px; } to { opacity: 1; translate: 0 0; } }
+@keyframes intro-rise { from { opacity: 0; translate: 0 22px; } to { opacity: 1; translate: 0 0; } }
+
 /* reduced motion: no loops; the ember stays lit and the breathing card shows both counts */
 .intro.still { animation: none; }
 .intro.still .intro-depth, .intro.still .intro-title, .intro.still .intro-sub { transform: none; transition: none; }

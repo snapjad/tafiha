@@ -196,7 +196,8 @@ export function run({ consult = false } = {}) {
     covered.forEach((el) => { el.inert = true; });
 
     const root = document.createElement('div');
-    root.className = `intro${RM ? ' still' : ''}`;
+    // 'enter': the first screen arrives piece by piece (css/onboarding.css)
+    root.className = `intro${RM ? ' still' : ' enter'}`;
     root.setAttribute('role', 'dialog');
     root.setAttribute('aria-modal', 'true');
     root.setAttribute('aria-label', 'أهلاً فيك بطفّيها');
