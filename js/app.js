@@ -1,4 +1,5 @@
 // طفّيها — dashboard
+import './smoky.js';
 import * as S from './store.js';
 import { initCraving, openCraving } from './craving.js';
 import { makeStory } from './share.js';
