@@ -44,7 +44,9 @@ export function stop() {
 }
 
 // The account's realtime channel has a secret name from the server (an HMAC of the user id),
-// so nobody else can listen for its pings or send fake ones. Pings carry only a revision.
+// and it's private: Realtime lets in only the signed-in owner of that account
+// (supabase/realtime.sql), so nobody else can listen for its pings or send fake ones.
+// Pings carry only a revision.
 async function subscribe(run) {
   if (!userId) return;
   let name;
@@ -55,7 +57,7 @@ async function subscribe(run) {
   } catch { return; }
   if (run !== generation) return;
   if (chan) sb.removeChannel(chan);
-  chan = sb.channel(name, { config: { broadcast: { self: false } } })
+  chan = sb.channel(name, { config: { private: true, broadcast: { self: false } } })
     .on('broadcast', { event: 'rev' }, ({ payload }) => {
       if (run !== generation || !Number.isSafeInteger(payload?.rev) || payload.rev <= meta.rev) return;
       if (Date.now() - lastBroadcast < 2000) return;
