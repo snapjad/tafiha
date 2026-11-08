@@ -177,8 +177,12 @@
 
 /* opening: on the first screen the logo and picture drop in, then the words and the button rise one
    after the other with a small spring. It animates 'translate', so the swipe's own transforms keep working. */
-.intro.enter .intro-page:first-child :is(.intro-brand, .intro-hero) { animation: intro-drop 760ms cubic-bezier(.34, 1.36, .64, 1) both; }
-.intro.enter .intro-page:first-child .intro-hero { animation-delay: 90ms; }
+.intro.enter .intro-page:first-child :is(.intro-brand, .intro-hero-wrap) { animation: intro-drop 760ms cubic-bezier(.34, 1.36, .64, 1) both; }
+.intro.enter .intro-page:first-child .intro-hero-wrap { animation-delay: 90ms; }
+/* the 3D mark sits behind the words around it, so its faded edges never cover them */
+.intro-hero-wrap { z-index: 0; }
+.intro-hero-wrap > video { z-index: -1; }
+.intro-page[data-screen='welcome'] :is(.intro-brand, .intro-kinds, .intro-title) { position: relative; z-index: 1; }
 .intro.enter .intro-page:first-child :is(.intro-kinds figure, .intro-title, .intro-sub, .intro-dots, .intro-btn) { animation: intro-rise 620ms cubic-bezier(.34, 1.4, .64, 1) both; }
 .intro.enter .intro-page:first-child .intro-kinds figure:nth-child(1) { animation-delay: 180ms; }
 .intro.enter .intro-page:first-child .intro-kinds figure:nth-child(2) { animation-delay: 230ms; }

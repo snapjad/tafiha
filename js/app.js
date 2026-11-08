@@ -19,6 +19,18 @@ const $ = (sel, root = document) => root.querySelector(sel);
 const RM = matchMedia('(prefers-reduced-motion: reduce)').matches;
 const RING_C = 2 * Math.PI * 52;
 
+// The 3D mark on the loading screen plays only while the loading screen is up (it comes back on sign-out).
+{
+  const bootVideo = $('.boot-3d');
+  Onboarding.liveMark(bootVideo);
+  if (bootVideo && !RM) {
+    new MutationObserver(() => {
+      if (document.body.classList.contains('booting')) bootVideo.play().catch(() => {});
+      else bootVideo.pause();
+    }).observe(document.body, { attributes: true, attributeFilter: ['class'] });
+  }
+}
+
 let state = null;
 let currentUser = null;
 let booted = false;

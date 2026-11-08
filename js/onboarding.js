@@ -4,6 +4,19 @@
 const SEEN = 'tafiha.intro';
 const RM = matchMedia('(prefers-reduced-motion: reduce)').matches;
 
+// The 3D mark video (css/app.css .mark3d) replaces the drawn mark only once it really plays.
+// With reduced motion it never loads.
+const MARK3D = '<video class="mark3d-video" src="assets/brand/tafiha-mark-3d.mp4" muted autoplay loop playsinline disablepictureinpicture preload="auto" aria-hidden="true" tabindex="-1"></video>';
+export function liveMark(video) {
+  if (!video) return;
+  if (RM) { video.removeAttribute('autoplay'); video.preload = 'none'; return; }
+  video.muted = true;
+  const on = () => video.parentElement.classList.add('live');
+  if (!video.paused && video.readyState > 2) on();
+  else video.addEventListener('playing', on, { once: true });
+  video.play().catch(() => {});
+}
+
 export function seen() {
   try { return localStorage.getItem(SEEN) === '1'; } catch { return false; }
 }
@@ -39,6 +52,7 @@ function screens(consult) {
       id: 'welcome', dark: true, title: 'أهلاً فيك بطفّيها',
       sub: 'سجاير، فيب، أو أرجيلة؟ بنطفّيها سوا، خطوة خطوة.',
       body: `
+        <div class="mark3d intro-hero-wrap">
         <svg class="intro-hero" viewBox="226 -200 160 216" width="220" height="297" aria-hidden="true">
           <path class="intro-smoke" d="M306 -50 C 298 -78, 318 -98, 306 -124 C 296 -146, 316 -164, 304 -192"/>
           <path d="M269.8 -74.3 A 46 46 0 1 0 342.2 -74.3" fill="none" stroke="#fff" stroke-width="24"/>
@@ -48,6 +62,8 @@ function screens(consult) {
             <rect class="intro-ember" x="294" y="-55" width="24" height="15"/>
           </g>
         </svg>
+        ${RM ? '' : MARK3D}
+        </div>
         <div class="intro-kinds"><figure><img src="assets/icons/cig.webp" alt="" width="76" height="76"><figcaption>سجاير</figcaption></figure><figure><img src="assets/icons/vape.webp" alt="" width="76" height="76"><figcaption>فيب</figcaption></figure><figure><img src="assets/icons/hookah.webp" alt="" width="76" height="76"><figcaption>أرجيلة</figcaption></figure></div>`,
     },
     {
@@ -205,6 +221,7 @@ export function run({ consult = false } = {}) {
     document.body.appendChild(root);
     const track = root.querySelector('.intro-track');
     const pages = [...track.children];
+    liveMark(root.querySelector('.mark3d-video'));
 
     // offset: how far the finger has dragged, in px (positive = towards the next screen)
     function place(offset = 0, animate = true) {
