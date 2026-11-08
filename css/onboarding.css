@@ -213,3 +213,37 @@
   .intro-title { font-size: 25px; }
   .intro-foot { padding-top: 10px; gap: 10px; }
 }
+
+/* wide screens: a web page, not a phone. Each screen splits in two: the words and buttons on the
+   start side (right, in Arabic) and the picture or card beside them; the 3D mark grows. The swipe,
+   dots and buttons work as on the phone. */
+@media (min-width: 1000px) and (min-height: 560px) {
+  .intro-screen {
+    max-width: 1120px; padding: env(safe-area-inset-top) 56px 0; overflow-y: auto; scrollbar-width: none;
+    display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.05fr); column-gap: 80px;
+    grid-template-rows: auto 1fr auto auto auto auto 1fr;
+    grid-template-areas: "top top" ". art" "mark art" "title art" "sub art" "foot art" ". art";
+  }
+  .intro-screen::-webkit-scrollbar { display: none; }
+  .intro-main { display: contents; }
+  .intro-brand, .intro-top { grid-area: top; }
+  .intro-brand { justify-content: flex-start; padding-top: 30px; }
+  .intro-top { padding: 0; margin-top: 26px; }
+  .intro-main > .intro-mark { grid-area: mark; margin-bottom: 18px; }
+  .intro-visual, .intro-body { grid-area: art; align-self: center; width: 100%; max-width: 500px; justify-self: center; padding: 32px 0; }
+  .intro-title { grid-area: title; font-size: 44px; line-height: 1.3; }
+  .intro-page[data-theme='dark'] .intro-title { font-size: 48px; }
+  .intro-page[data-screen='ready'] .intro-title { font-size: 52px; }
+  .intro-sub { grid-area: sub; margin-top: 14px; font-size: 18px; max-width: 30em; }
+  .intro-page[data-theme='dark'] .intro-sub { font-size: 19px; margin-top: 14px; }
+  .intro-foot { grid-area: foot; align-items: flex-start; padding: 34px 0 0; }
+  .intro-dots { order: 9; margin: 8px 0 0; }
+  .intro-btn { width: 340px; }
+  .intro-fine { text-align: start; max-width: 340px; }
+  /* the first screen: the 3D mark big, the three objects under it */
+  .intro-visual { min-height: 0; gap: 44px; }
+  .intro-hero { width: 300px; }
+  .intro-kinds { gap: 36px; }
+  .intro-kinds img { width: 92px; height: 92px; }
+  .intro-kinds figcaption { font-size: 15px; }
+}
