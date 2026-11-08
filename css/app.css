@@ -984,6 +984,20 @@ a.btn { text-decoration: none; }
   .hms .unit .num { font-size: 44px; }
   .stage { margin: -60px -10px 0; max-height: 360px; }
 }
+/* «جسمي» and «إنجازاتي» on wide screens: columns instead of one long stack */
+@media (min-width: 1180px) {
+  /* the health stations on the start side, the heart card beside them, staying in view while scrolling */
+  .page[data-page='body'] .page-grid { grid-template-columns: repeat(12, 1fr); align-items: start; }
+  .page[data-page='body'] .health { grid-column: 1 / span 7; grid-row: 1 / span 2; }
+  .page[data-page='body'] .body-hero { grid-column: 8 / span 5; grid-row: 1; position: sticky; top: 24px; flex-direction: column; align-items: center; text-align: center; padding: 28px 24px; }
+  .page[data-page='body'] .body-ico { width: 150px; height: 150px; }
+  .page[data-page='body'] .body-count { margin: 10px 0 0; padding-top: 14px; border-top: 1px solid var(--line); width: 100%; }
+  /* cravings and sharing on the start side, the goal, guardian and slip cards beside them */
+  .page[data-page='wins'] .page-grid { grid-template-columns: repeat(12, 1fr); align-items: start; grid-auto-flow: row dense; }
+  .page[data-page='wins'] .cravings { grid-column: 1 / span 7; }
+  .page[data-page='wins'] :is(.goal, .guardian, .slip) { grid-column: 8 / span 5; }
+  .page[data-page='wins'] .sharecard { grid-column: 1 / span 7; }
+}
 /* sheets open as a centred window on wide screens */
 @media (min-width: 1000px) {
   .sheet {
