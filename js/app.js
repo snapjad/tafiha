@@ -1396,7 +1396,7 @@ function start() {
   });
   $('#cravingBtn').onclick = (ev) => openCraving(ev.currentTarget);
   // the logo: the home page from anywhere in the app
-  $('#homeLogo').onclick = (ev) => { ev.preventDefault(); showPage('home'); };
+  for (const logo of document.querySelectorAll('#homeLogo, .side-brand')) logo.onclick = (ev) => { ev.preventDefault(); showPage('home'); };
   startReminders();
   document.querySelectorAll('.tab').forEach((t) => { t.onclick = () => showPage(t.dataset.tab); });
   $('#planPdfBtn').onclick = async () => {

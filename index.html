@@ -361,6 +361,8 @@
 
   <!-- tab bar with the craving button in the middle -->
   <nav class="tabbar" aria-label="الأقسام">
+    <!-- on wide screens the tab bar is a side menu with the logo on top (css/app.css, ≥ 1000) -->
+    <a class="side-brand" href="./" aria-label="طفّيها، الصفحة الرئيسية"><img class="wordmark" src="assets/brand/tafiha-logo-transparent-dark.svg" alt="" width="96" height="55"></a>
     <button class="tab is-active" data-tab="home" aria-current="page"><svg class="ico"><use href="#i-home"/></svg><span>الرئيسية</span></button>
     <button class="tab" data-tab="plan"><svg class="ico"><use href="#i-plan"/></svg><span>خطتي</span></button>
     <button class="tab-sos" id="cravingBtn" aria-label="عندي رغبة"><span class="sos-core" aria-hidden="true"></span><span class="sos-lbl">عندي رغبة</span></button>
