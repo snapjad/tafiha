@@ -425,23 +425,21 @@ a.btn { text-decoration: none; }
   .boot-tip { animation: none; fill: #e1261c; }
   .boot-smoke { display: none; }
 }
-/* the 3D mark (blender/make_logo3d_anim.py → assets/brand/tafiha-mark-3d.mp4) laid over the drawn one,
-   which stays until the video really plays (offline, slow network, reduced motion: the drawn mark).
+/* the 3D mark (blender/make_logo3d_anim.py → assets/brand/tafiha-mark-3d.mp4). Its first frame
+   (tafiha-mark-3d-poster.webp, blender/mp4_to_poster.py) shows at once, so the old drawn mark never
+   flashes first; the drawn mark (the svg, kept for layout) comes back only if the video fails to load.
+   With reduced motion the still stays and nothing plays.
    In the frame the mark is ~43% wide and centred; the drawn mark sits lower in its box, hence the nudge.
    The video's backdrop is a touch lighter than the ink, so its edges fade out into the page. */
 .mark3d { position: relative; display: grid; place-items: center; }
 .mark3d > video {
   position: absolute; left: 50%; top: 50%; width: 170%; height: auto; aspect-ratio: 1; translate: -50% -40%;
-  opacity: 0; transition: opacity .5s; pointer-events: none; background: transparent;
+  pointer-events: none; background: transparent; object-fit: contain;
   -webkit-mask-image: radial-gradient(closest-side, #000 58%, transparent 98%); mask-image: radial-gradient(closest-side, #000 58%, transparent 98%);
 }
-.mark3d > svg { transition: opacity .5s; }
-.mark3d.live > video { opacity: 1; }
-.mark3d.live > svg { opacity: 0; }
-@media (prefers-reduced-motion: reduce) {
-  .mark3d > video { display: none; }
-  .mark3d.live > svg { opacity: 1; }
-}
+.mark3d > svg { visibility: hidden; }
+.mark3d.fallback > svg { visibility: visible; }
+.mark3d.fallback > video { display: none; }
 .account-trigger { min-width: 44px; height: 44px; padding: 0 10px; border-radius: 50%; background: var(--filter-soft); color: var(--ink); font-size: 13px; font-weight: 600; flex: none; }
 .account-trigger:hover { background: var(--filter); }
 .auth::before { content: ''; position: fixed; inset: 0 0 auto; height: 4px; background: var(--ember); z-index: 1; }

@@ -4,16 +4,16 @@
 const SEEN = 'tafiha.intro';
 const RM = matchMedia('(prefers-reduced-motion: reduce)').matches;
 
-// The 3D mark video (css/app.css .mark3d) replaces the drawn mark only once it really plays.
-// With reduced motion it never loads.
-const MARK3D = '<video class="mark3d-video" src="assets/brand/tafiha-mark-3d.mp4" muted autoplay loop playsinline disablepictureinpicture preload="auto" aria-hidden="true" tabindex="-1"></video>';
+// The 3D mark video (css/app.css .mark3d): its first frame shows at once as the poster, then it
+// plays. If it can't load, the drawn mark comes back. With reduced motion only the still shows.
+const MARK3D = '<video class="mark3d-video" src="assets/brand/tafiha-mark-3d.mp4" poster="assets/brand/tafiha-mark-3d-poster.webp" muted autoplay loop playsinline disablepictureinpicture preload="auto" aria-hidden="true" tabindex="-1"></video>';
 export function liveMark(video) {
   if (!video) return;
-  if (RM) { video.removeAttribute('autoplay'); video.preload = 'none'; return; }
+  const fallback = () => video.parentElement?.classList.add('fallback');
+  if (video.error) fallback();
+  else video.addEventListener('error', fallback, { once: true });
+  if (RM) { video.removeAttribute('autoplay'); video.preload = 'none'; video.pause(); return; }
   video.muted = true;
-  const on = () => video.parentElement.classList.add('live');
-  if (!video.paused && video.readyState > 2) on();
-  else video.addEventListener('playing', on, { once: true });
   video.play().catch(() => {});
 }
 
@@ -62,7 +62,7 @@ function screens(consult) {
             <rect class="intro-ember" x="294" y="-55" width="24" height="15"/>
           </g>
         </svg>
-        ${RM ? '' : MARK3D}
+        ${MARK3D}
         </div>
         <div class="intro-kinds"><figure><img src="assets/icons/cig.webp" alt="" width="76" height="76"><figcaption>سجاير</figcaption></figure><figure><img src="assets/icons/vape.webp" alt="" width="76" height="76"><figcaption>فيب</figcaption></figure><figure><img src="assets/icons/hookah.webp" alt="" width="76" height="76"><figcaption>أرجيلة</figcaption></figure></div>`,
     },
