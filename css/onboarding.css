@@ -242,7 +242,7 @@
   .intro-fine { text-align: start; max-width: 340px; }
   /* the first screen: the 3D mark big, the three objects under it */
   .intro-visual { min-height: 0; gap: 44px; }
-  .intro-hero { width: 300px; }
+  .intro-hero { width: clamp(200px, 36vh, 300px); } /* shorter laptop screens get a smaller mark, so nothing scrolls */
   .intro-kinds { gap: 36px; }
   .intro-kinds img { width: 92px; height: 92px; }
   .intro-kinds figcaption { font-size: 15px; }
