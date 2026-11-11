@@ -1,5 +1,6 @@
 // طفّيها — the intake interview, like the first visit at a quit-smoking clinic.
 // Questions are declared as data (items can depend on earlier answers) and shown one per screen.
+import { unlock as unlockVoice } from './voice.js';
 import { CONDITIONS, MEDS, TRIGGERS, WITHDRAWAL, chooseApproach, gradualQuitAt, allowsLongPlan } from './plan.js';
 
 const esc = (v) => String(v ?? '').replace(/[&<>"']/g, (c) => `&#${c.charCodeAt(0)};`);
@@ -386,7 +387,7 @@ export function runAssessment(prev = {}, opts = {}) {
       });
       el.querySelector('[data-next]')?.addEventListener('click', () => next(el, step));
       el.querySelector('[data-login]')?.addEventListener('click', () => leave({ __login: true }));
-      el.querySelector('[data-mentor]')?.addEventListener('click', () => { read(el); leave({ __mentor: true, name: (a.name || '').trim() }); });
+      el.querySelector('[data-mentor]')?.addEventListener('click', () => { unlockVoice(); read(el); leave({ __mentor: true, name: (a.name || '').trim() }); });
       el.querySelector('[data-home]')?.addEventListener('click', (ev) => { ev.preventDefault(); leave({ __home: true }); });
       const nameInput = step.intro && el.querySelector('input[name="name"]');
       if (nameInput) {

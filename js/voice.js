@@ -22,6 +22,17 @@ function arabicVoice() {
   return webVoice;
 }
 
+// iPhones only let a page speak if speech first starts inside a tap: call this in the tap itself
+export function unlock() {
+  if (native() || !('speechSynthesis' in window)) return;
+  try {
+    const u = new SpeechSynthesisUtterance('.');
+    u.volume = 0;
+    speechSynthesis.cancel();
+    speechSynthesis.speak(u);
+  } catch { /* nothing to unlock */ }
+}
+
 // resolves when the sentence has been said (or could not be)
 export async function speak(text) {
   if (!text) return;
@@ -36,8 +47,10 @@ export async function speak(text) {
     u.lang = 'ar';
     const v = arabicVoice();
     if (v) { u.voice = v; u.lang = v.lang; }
-    const done = () => { clearTimeout(guard); resolve(); };
+    const done = () => { clearTimeout(guard); clearTimeout(silent); resolve(); };
     const guard = setTimeout(done, 4000 + text.length * 150); // some browsers never fire onend
+    const silent = setTimeout(done, 2000); // never started (blocked): don't keep the person waiting
+    u.onstart = () => clearTimeout(silent);
     u.onend = done;
     u.onerror = done;
     speechSynthesis.cancel();
@@ -77,13 +90,15 @@ export async function listen() {
   return new Promise((resolve, reject) => {
     const rec = new Rec();
     webRec = rec;
-    rec.lang = 'ar-JO';
+    // iPhones listen in Saudi Arabic (they have no Jordanian); Chrome knows ar-JO
+    rec.lang = /iPhone|iPad|Macintosh/.test(navigator.userAgent) && !/Chrome/.test(navigator.userAgent) ? 'ar-SA' : 'ar-JO';
     rec.interimResults = false;
     rec.maxAlternatives = 1;
     let heard = '';
     rec.onresult = (ev) => { heard = String(ev.results?.[0]?.[0]?.transcript || '').trim(); };
     rec.onerror = (ev) => {
       if (ev.error === 'not-allowed' || ev.error === 'service-not-allowed') reject(Object.assign(new Error('denied'), { code: 'denied' }));
+      // no-speech, aborted, network…: ends with nothing heard
     };
     rec.onend = () => { webRec = null; resolve(heard); };
     try { rec.start(); } catch { resolve(''); }

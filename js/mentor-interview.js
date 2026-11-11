@@ -173,9 +173,10 @@ export function runMentorInterview(prev = {}) {
     $('[data-typing]').onclick = () => { typeForm.hidden = !typeForm.hidden; if (!typeForm.hidden) typeForm.t.focus(); };
 
     // one reply from the person: a tap, typed words or spoken words
-    let settle = null;
-    const reply = () => new Promise((r) => { settle = r; });
-    const give = (v) => { if (settle) { const s = settle; settle = null; s(v); } };
+    // a reply given while the guide is still talking waits here until he asks for it
+    let settle = null, early = null;
+    const reply = () => (early ? Promise.resolve(((v) => { early = null; return v; })(early)) : new Promise((r) => { settle = r; }));
+    const give = (v) => { if (settle) { const s = settle; settle = null; s(v); } else early = v; };
     typeForm.onsubmit = (ev) => { ev.preventDefault(); const t = typeForm.t.value.trim(); if (t) { typeForm.t.value = ''; give({ text: t }); } };
     mic.onclick = async () => {
       if (listening) { Voice.stopListening(); return; }
@@ -183,12 +184,14 @@ export function runMentorInterview(prev = {}) {
       listening = true;
       mic.classList.add('on');
       face?.mood('attentive');
+      const before = sayEl.textContent;
+      sayEl.textContent = 'عم بسمعك… احكي، ولما تخلص اسكت ثانية.';
       try {
         const heard = await Voice.listen();
-        if (heard) give({ text: heard });
-        else sayEl.textContent = 'ما سمعتك. اكبس المايك واحكي، أو اختار من الأجوبة.';
+        if (heard) { sayEl.textContent = `«${heard}»`; give({ text: heard }); }
+        else sayEl.textContent = `ما سمعتك. اكبس المايك واحكي، أو اختار من الأجوبة. (${before})`;
       } catch {
-        sayEl.textContent = 'ما في إذن للمايك. بتقدر تكتب أو تختار من الأجوبة.';
+        sayEl.textContent = 'ما في إذن للمايك أو للإملاء. فعّلهم من الإعدادات، أو اكتب أو اختار من الأجوبة.';
         mic.hidden = true;
         typeForm.hidden = false;
       } finally { listening = false; mic.classList.remove('on'); face?.mood('rest'); }
