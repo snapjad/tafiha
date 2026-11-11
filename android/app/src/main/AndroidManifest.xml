@@ -40,6 +40,14 @@
     <!-- Permissions -->
 
     <uses-permission android:name="android.permission.INTERNET" />
+    <!-- the spoken interview: the phone's own speech recognition (asks for the microphone first) -->
+    <uses-permission android:name="android.permission.RECORD_AUDIO" />
+
+    <!-- Android 11+ only lets the app see the phone's speech engines if it says it uses them -->
+    <queries>
+        <intent><action android:name="android.speech.RecognitionService" /></intent>
+        <intent><action android:name="android.intent.action.TTS_SERVICE" /></intent>
+    </queries>
     <!-- Reminders are scheduled on the phone (local notifications); they don't need to the-minute
          alarms, and Google Play restricts that permission to alarm and calendar apps. -->
     <uses-permission android:name="android.permission.SCHEDULE_EXACT_ALARM" tools:node="remove" />

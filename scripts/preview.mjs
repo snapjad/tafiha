@@ -6,7 +6,7 @@ import { fileURLToPath, pathToFileURL } from 'node:url';
 
 const root = fileURLToPath(new URL('../', import.meta.url));
 const mime = { '.html': 'text/html; charset=utf-8', '.js': 'text/javascript; charset=utf-8', '.css': 'text/css; charset=utf-8', '.webmanifest': 'application/manifest+json', '.webp': 'image/webp', '.png': 'image/png', '.svg': 'image/svg+xml', '.woff2': 'font/woff2', '.mp4': 'video/mp4' };
-const publicPath = /^(?:(?:index|privacy|terms|delete-account|admin)\.html|manifest\.webmanifest|sw\.js|css\/[a-zA-Z0-9_-]+\.css|js\/(?:vendor\/|admin\/)?[a-zA-Z0-9_-]+\.js|assets\/(?:icons\/|brand\/|store\/)?[a-zA-Z0-9_-]+\.(?:png|webp|svg)|assets\/brand\/[a-zA-Z0-9_-]+\.mp4|assets\/fonts\/[a-z0-9-]+\.woff2)$/;
+const publicPath = /^(?:(?:index|privacy|terms|delete-account|admin)\.html|manifest\.webmanifest|sw\.js|css\/[a-zA-Z0-9_-]+\.css|js\/(?:vendor\/|admin\/)?[a-zA-Z0-9_-]+\.js|assets\/(?:icons\/|brand\/|store\/|mentor\/)?[a-zA-Z0-9_-]+\.(?:png|webp|svg)|assets\/brand\/[a-zA-Z0-9_-]+\.mp4|assets\/fonts\/[a-z0-9-]+\.woff2)$/;
 
 export async function createPreview() {
   const realRoot = await realpath(root);
@@ -18,7 +18,7 @@ export async function createPreview() {
     res.setHeader('X-Content-Type-Options', 'nosniff');
     res.setHeader('X-Frame-Options', 'DENY');
     res.setHeader('Referrer-Policy', 'strict-origin-when-cross-origin');
-    res.setHeader('Permissions-Policy', 'camera=(), microphone=(), geolocation=()');
+    res.setHeader('Permissions-Policy', 'camera=(), microphone=(self), geolocation=()');
     res.setHeader('Cache-Control', 'no-store');
     if (req.headers.host !== `127.0.0.1:${res.socket.localPort}` && req.headers.host !== `localhost:${res.socket.localPort}`) {
       res.writeHead(403); res.end(); return;

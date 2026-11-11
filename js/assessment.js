@@ -166,7 +166,7 @@ const SECTIONS = [
 // ---------------------------------------------------------------- one question per screen
 // Every item becomes its own screen; a group of numbers shares one screen.
 // Single choices move on by themselves, so most answers are a single tap.
-function buildSteps(a) {
+export function buildSteps(a) {
   const steps = [{ key: 'intro', intro: true }];
   for (const sec of SECTIONS) {
     if (sec.when && !sec.when(a)) continue;
@@ -184,6 +184,13 @@ function buildSteps(a) {
     }
   }
   return steps;
+}
+
+// the answers a choice offers this person (some ways to quit only fit some products)
+export function choiceOptions(it, a) {
+  return it.options.filter(([v]) => it.id !== 'approach'
+    || (v !== 'gradual-long' || allowsLongPlan(a))
+    && (v !== 'gradual-short' || (a.products?.length === 1 && a.products[0] === 'cig')));
 }
 
 function stepper(it, a) {
@@ -212,9 +219,7 @@ function control(step, a) {
       <div class="scale-ends"><span>${it.low}</span><span>${it.high}</span></div>`;
   }
   if (it.type === 'choice') {
-    const options = it.options.filter(([v]) => it.id !== 'approach'
-      || (v !== 'gradual-long' || allowsLongPlan(a))
-      && (v !== 'gradual-short' || (a.products?.length === 1 && a.products[0] === 'cig')));
+    const options = choiceOptions(it, a);
     const yesno = options.length === 2 && typeof options[0][0] === 'boolean';
     const cls = yesno ? 'big-opts two' : options.length > 4 ? 'big-opts grid' : 'big-opts';
     return `<div class="${cls}" role="radiogroup">${options.map(([v, l, h]) =>
@@ -229,6 +234,21 @@ function control(step, a) {
     }).join('')}</div>`;
   }
   return '';
+}
+
+// the quit moment and the time of the interview, from the answers (shared with the spoken interview)
+export function finalize(a) {
+  const now = Date.now();
+  if (a.quitMode === 'future') {
+    const how = chooseApproach(a);
+    a.quitAt = how === 'abrupt' ? a.futureDate : gradualQuitAt(how, now);
+  }
+  else if (a.when === 'now') a.quitAt = now;
+  else if (a.when === 'morning') { const d = new Date(); d.setHours(8, 0, 0, 0); a.quitAt = Math.min(d.getTime(), now); }
+  else if (a.when === 'yesterday') a.quitAt = now - 864e5;
+  else a.quitAt = Math.min(a.pastDate || now, now);
+  a.assessedAt = now;
+  return a;
 }
 
 export function runAssessment(prev = {}, opts = {}) {
@@ -272,6 +292,7 @@ export function runAssessment(prev = {}, opts = {}) {
           <p class="onb-err" role="alert"></p>
           <div class="onb-actions">
             <button class="btn btn-red" data-next>يلا نبلّش</button>
+            ${opts.mentor ? '<button class="btn btn-ink" type="button" data-mentor>احكي مع مرشد طفّيها</button>' : ''}
             ${opts.onLogin ? '<button class="btn btn-line" type="button" data-login>عندي حساب، سجّل دخول</button>' : ''}
           </div>`;
       } else {
@@ -365,6 +386,7 @@ export function runAssessment(prev = {}, opts = {}) {
       });
       el.querySelector('[data-next]')?.addEventListener('click', () => next(el, step));
       el.querySelector('[data-login]')?.addEventListener('click', () => leave({ __login: true }));
+      el.querySelector('[data-mentor]')?.addEventListener('click', () => { read(el); leave({ __mentor: true, name: (a.name || '').trim() }); });
       el.querySelector('[data-home]')?.addEventListener('click', (ev) => { ev.preventDefault(); leave({ __home: true }); });
       const nameInput = step.intro && el.querySelector('input[name="name"]');
       if (nameInput) {
@@ -381,19 +403,7 @@ export function runAssessment(prev = {}, opts = {}) {
       resolve(result);
     }
 
-    function finish() {
-      const now = Date.now();
-      if (a.quitMode === 'future') {
-        const how = chooseApproach(a);
-        a.quitAt = how === 'abrupt' ? a.futureDate : gradualQuitAt(how, now);
-      }
-      else if (a.when === 'now') a.quitAt = now;
-      else if (a.when === 'morning') { const d = new Date(); d.setHours(8, 0, 0, 0); a.quitAt = Math.min(d.getTime(), now); }
-      else if (a.when === 'yesterday') a.quitAt = now - 864e5;
-      else a.quitAt = Math.min(a.pastDate || now, now);
-      a.assessedAt = now;
-      leave(a);
-    }
+    function finish() { leave(finalize(a)); }
 
     render();
   });

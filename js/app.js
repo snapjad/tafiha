@@ -5,6 +5,7 @@ import { initCraving, openCraving } from './craving.js';
 import { makeStory } from './share.js';
 import { initCigarette } from './cigarette.js';
 import { runAssessment } from './assessment.js';
+import { runMentorInterview, mentorEnabled } from './mentor-interview.js';
 import { openReport, downloadPDF } from './report.js';
 import { buildReport, planWeek, patchStepFor, gumStageFor, stepAt, APPROACHES, unitOf, targetText, planReviewReason } from './plan.js';
 import * as Sync from './sync.js';
@@ -1244,7 +1245,12 @@ async function welcome(error) {
       mode = await Onboarding.run({ consult }) === 'login' ? 'login' : answers ? 'gate' : null;
     }
     if (!answers && mode !== 'login') {
-      const r = await runAssessment({}, { onLogin: true, onHome: true });
+      let r = await runAssessment({}, { onLogin: true, onHome: true, mentor: mentorEnabled() });
+      // the spoken interview with the virtual guide; closing it goes back to the written one
+      while (r.__mentor) {
+        const spoken = await runMentorInterview({ name: r.name });
+        r = spoken.__back ? await runAssessment({ name: spoken.partial?.name || r.name }, { onLogin: true, onHome: true, mentor: true }) : spoken;
+      }
       if (r.__home) { intro = true; continue; }
       if (r.__login) mode = 'login';
       else { answers = r; savePending(answers); mode = 'gate'; }

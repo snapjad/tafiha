@@ -7,3 +7,6 @@ export const SUPABASE_ANON = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzd
 // secret lives only in Supabase. The widget only runs on these hostnames (see js/captcha.js).
 export const TURNSTILE_SITE_KEY = '0x4AAAAAAFMpUa4fO7cIsrii';
 export const TURNSTILE_HOSTS = ['tafiha.com', 'www.tafiha.com'];
+
+// the spoken interview with «مرشد طفّيها» (js/mentor-interview.js): off until the «mentor» function is deployed
+export const MENTOR_ON = false;
