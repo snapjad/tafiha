@@ -4,7 +4,9 @@
 // question comes next and js/plan.js builds the plan). The guide says each question; the person
 // answers by voice, by typing or by tapping an answer. A tap or an exact answer is taken here;
 // anything else goes to the «mentor» Edge Function, which only maps it onto this question's own
-// answers (or says one fixed sentence when it is off topic). Voices are the phone's own, free.
+// answers and writes the guide's reply in his own words, or says one fixed sentence when it is
+// off topic. The guide's voice is a Jordanian neural voice made by the same function; listening is
+// the phone's own, free. Without the server the words stay on screen and taps keep working.
 import { buildSteps, choiceOptions, finalize } from './assessment.js';
 import { createMentor } from './mentor.js';
 import * as Voice from './voice.js';
@@ -142,21 +144,53 @@ export function runMentorInterview(prev = {}) {
     const canListen = await Voice.canListen();
     if (!canListen) { mic.hidden = true; $('[data-typing]').hidden = true; typeForm.hidden = false; }
 
-    // the face moves its mouth while the phone's voice speaks (the voice gives no loudness, so a gentle pattern)
-    let flap = 0;
+    // the conversation so far, for the guide to read (the last few turns)
+    const history = [];
+    const remember = (who, text) => { history.push({ who, text: String(text).slice(0, 400) }); if (history.length > 8) history.shift(); };
+
+    // the guide's voice: the same sentence comes back as speech; repeated ones are kept
+    const voices = new Map();
+    function voiceFor(text) {
+      if (!voices.has(text)) {
+        const p = fetch(`${SUPABASE_URL}/functions/v1/mentor`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', apikey: SUPABASE_ANON, Authorization: `Bearer ${SUPABASE_ANON}` },
+          body: JSON.stringify({ say: text.slice(0, 500) }),
+          signal: AbortSignal.timeout(15000),
+        }).then((r) => (r.ok ? r.blob() : Promise.reject(new Error('voice')))).then((b) => URL.createObjectURL(b));
+        p.catch(() => voices.delete(text));
+        voices.set(text, p);
+      }
+      return voices.get(text);
+    }
+
+    // shows the sentence, then says it; resolves when he's done (or right away when there's no voice)
+    let speaking = null;
     async function say(text, mood = 'rest') {
       sayEl.textContent = text;
       face?.mood(mood);
-      if (muted || closed || !Voice.canSpeak()) { await sleep(Math.min(2600, 600 + text.length * 35)); return; }
-      let t = 0;
-      flap = setInterval(() => { t++; face?.level([0.05, 0.3, 0.12, 0.4, 0.2, 0.08, 0.35][t % 7] * (0.7 + Math.random() * 0.6)); }, 95);
-      try { await Voice.speak(text); } finally { clearInterval(flap); face?.quiet(); }
+      remember('guide', text);
+      const { player, context } = Voice.sound();
+      if (muted || closed || !player) { await sleep(Math.min(2200, 500 + text.length * 30)); return; }
+      let url;
+      try { url = await voiceFor(text); } catch { return; }
+      if (closed || muted) return;
+      await new Promise((resolve) => {
+        const done = () => { player.onended = player.onerror = null; speaking = null; face?.quiet(); resolve(); };
+        speaking = done;
+        player.onended = done;
+        player.onerror = done;
+        player.src = url;
+        face?.speak(player, context);
+        player.play().catch(done);
+      });
     }
+    const hush = () => { const { player } = Voice.sound(); player?.pause(); speaking?.(); };
 
     function leave(result) {
       if (closed) return;
       closed = true;
-      Voice.stopSpeaking();
+      hush();
       Voice.stopListening();
       face?.destroy();
       root.classList.add('leave');
@@ -168,7 +202,7 @@ export function runMentorInterview(prev = {}) {
     $('[data-mute]').onclick = (ev) => {
       muted = !muted;
       ev.currentTarget.setAttribute('aria-pressed', String(muted));
-      if (muted) Voice.stopSpeaking();
+      if (muted) hush();
     };
     $('[data-typing]').onclick = () => { typeForm.hidden = !typeForm.hidden; if (!typeForm.hidden) typeForm.t.focus(); };
 
@@ -177,10 +211,10 @@ export function runMentorInterview(prev = {}) {
     let settle = null, early = null;
     const reply = () => (early ? Promise.resolve(((v) => { early = null; return v; })(early)) : new Promise((r) => { settle = r; }));
     const give = (v) => { if (settle) { const s = settle; settle = null; s(v); } else early = v; };
-    typeForm.onsubmit = (ev) => { ev.preventDefault(); const t = typeForm.t.value.trim(); if (t) { typeForm.t.value = ''; give({ text: t }); } };
+    typeForm.onsubmit = (ev) => { ev.preventDefault(); const t = typeForm.t.value.trim(); if (t) { typeForm.t.value = ''; remember('person', t); give({ text: t }); } };
     mic.onclick = async () => {
       if (listening) { Voice.stopListening(); return; }
-      Voice.stopSpeaking();
+      hush();
       listening = true;
       mic.classList.add('on');
       face?.mood('attentive');
@@ -188,7 +222,7 @@ export function runMentorInterview(prev = {}) {
       sayEl.textContent = 'عم بسمعك… احكي، ولما تخلص اسكت ثانية.';
       try {
         const heard = await Voice.listen();
-        if (heard) { sayEl.textContent = `«${heard}»`; give({ text: heard }); }
+        if (heard) { sayEl.textContent = `«${heard}»`; remember('person', heard); give({ text: heard }); }
         else sayEl.textContent = `ما سمعتك. اكبس المايك واحكي، أو اختار من الأجوبة. (${before})`;
       } catch {
         sayEl.textContent = 'ما في إذن للمايك أو للإملاء. فعّلهم من الإعدادات، أو اكتب أو اختار من الأجوبة.';
@@ -242,7 +276,7 @@ export function runMentorInterview(prev = {}) {
       let said = '';
       if (!got) {
         try {
-          const out = await askServer({ q: serverQuestion(it, step, a), text: r.text.slice(0, 400), ...(a.name ? { name: a.name } : {}) });
+          const out = await askServer({ q: serverQuestion(it, step, a), text: r.text.slice(0, 400), history: history.slice(0, -1), ...(a.name ? { name: a.name } : {}) });
           if (out.kind !== 'answer') return { again: out.reply, mood: out.kind === 'urgent' ? 'attentive' : 'rest' };
           got = out.picks ? { picks: out.picks.map(Number) } : { number: out.number };
           said = out.reply || '';
@@ -278,26 +312,28 @@ export function runMentorInterview(prev = {}) {
     if (closed) return;
     await say(`أهلين يا ${a.name}. يلا نبلّش. جاوب بصراحة، وبأي طريقة بتريحك: احكي، أو اكتب، أو اختار.`, 'smile');
 
+    let ack = ''; // his reaction to the last answer, said together with the next question
     for (;;) {
       if (closed) return;
       const next = questions(a).find(({ it }) => !answered(it, a));
       if (!next) break;
       const { it, step } = next;
       showAnswers(it, step);
-      await say(spokenLabel(it, step));
+      await say(ack ? `${ack} ${spokenLabel(it, step)}` : spokenLabel(it, step), ack ? 'smile' : 'rest');
+      ack = '';
       for (;;) {
         if (closed) return;
         const got = await understand(await reply(), it, step);
         if (got.again) { await say(got.again, got.mood); continue; }
         a[it.id] = got.value;
-        if (got.said) await say(got.said, 'smile');
+        ack = got.said || '';
         break;
       }
     }
 
     answerEl.innerHTML = '';
     mic.hidden = true;
-    await say(`خلصنا يا ${a.name}. شكراً على صراحتك. هلأ بجهّزلك تقريرك وخطتك.`, 'smile');
+    await say(`${ack ? `${ack} ` : ''}خلصنا يا ${a.name}. شكراً على صراحتك. هلأ بجهّزلك تقريرك وخطتك.`, 'smile');
     leave(finalize(a));
   });
 }

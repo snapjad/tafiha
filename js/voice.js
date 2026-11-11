@@ -1,67 +1,41 @@
-// طفّيها — free speech for the spoken interview: the phone's own voice and its own listening.
-// In the Android app: the Text-to-Speech and Speech Recognition plugins (Google's engines on the
-// phone, no cost). In a browser: speechSynthesis and SpeechRecognition where the browser has them.
-// Everything resolves quietly when a part is missing, so the interview still works by tapping.
+// طفّيها — sound for the spoken interview.
+//   Listening: the phone's own speech recognition, free. In the Android app the Speech Recognition
+//   plugin (Google's engine on the phone); in a browser SpeechRecognition where it exists.
+//   Speaking: the guide's real voice comes from the «mentor» function as an mp3 (js/mentor-interview.js)
+//   and plays through one audio element that unlock() opens inside the person's tap, because
+//   phones only play sound a tap started.
 
 const cap = () => globalThis.Capacitor;
 const native = () => !!cap()?.isNativePlatform?.();
-const tts = () => cap()?.Plugins?.TextToSpeech;
 const stt = () => cap()?.Plugins?.SpeechRecognition;
 const WebRec = () => window.SpeechRecognition || window.webkitSpeechRecognition;
 
-export function canSpeak() {
-  return native() ? !!tts() : 'speechSynthesis' in window;
+let player = null, context = null;
+
+// a moment of silence as a WAV, made here (no file to load)
+function silence() {
+  const n = 800, buf = new ArrayBuffer(44 + n * 2), v = new DataView(buf);
+  const s = (o, t) => [...t].forEach((c, i) => v.setUint8(o + i, c.charCodeAt(0)));
+  s(0, 'RIFF'); v.setUint32(4, 36 + n * 2, true); s(8, 'WAVE'); s(12, 'fmt ');
+  v.setUint32(16, 16, true); v.setUint16(20, 1, true); v.setUint16(22, 1, true);
+  v.setUint32(24, 8000, true); v.setUint32(28, 16000, true); v.setUint16(32, 2, true); v.setUint16(34, 16, true);
+  s(36, 'data'); v.setUint32(40, n * 2, true);
+  return URL.createObjectURL(new Blob([buf], { type: 'audio/wav' }));
 }
 
-let webVoice;
-function arabicVoice() {
-  if (webVoice !== undefined) return webVoice;
-  const all = speechSynthesis.getVoices();
-  if (!all.length) return null; // the list loads late on some browsers; try again next time
-  webVoice = all.find((v) => /^ar[-_]JO/i.test(v.lang)) || all.find((v) => /^ar/i.test(v.lang)) || null;
-  return webVoice;
-}
-
-// iPhones only let a page speak if speech first starts inside a tap: call this in the tap itself
+// call inside the tap that opens the interview
 export function unlock() {
-  if (native() || !('speechSynthesis' in window)) return;
   try {
-    const u = new SpeechSynthesisUtterance('.');
-    u.volume = 0;
-    speechSynthesis.cancel();
-    speechSynthesis.speak(u);
-  } catch { /* nothing to unlock */ }
+    player ||= new Audio();
+    player.src = silence();
+    player.play().catch(() => {});
+    const Ctx = window.AudioContext || window.webkitAudioContext;
+    if (Ctx) { context ||= new Ctx(); context.resume?.().catch(() => {}); }
+  } catch { /* sound stays off; the words are on screen */ }
 }
 
-// resolves when the sentence has been said (or could not be)
-export async function speak(text) {
-  if (!text) return;
-  if (native()) {
-    if (!tts()) return;
-    try { await tts().speak({ text, lang: 'ar', rate: 1.0, pitch: 1.0, volume: 1.0, category: 'playback' }); } catch { /* no voice */ }
-    return;
-  }
-  if (!('speechSynthesis' in window)) return;
-  await new Promise((resolve) => {
-    const u = new SpeechSynthesisUtterance(text);
-    u.lang = 'ar';
-    const v = arabicVoice();
-    if (v) { u.voice = v; u.lang = v.lang; }
-    const done = () => { clearTimeout(guard); clearTimeout(silent); resolve(); };
-    const guard = setTimeout(done, 4000 + text.length * 150); // some browsers never fire onend
-    const silent = setTimeout(done, 2000); // never started (blocked): don't keep the person waiting
-    u.onstart = () => clearTimeout(silent);
-    u.onend = done;
-    u.onerror = done;
-    speechSynthesis.cancel();
-    speechSynthesis.speak(u);
-  });
-}
-
-export function stopSpeaking() {
-  if (native()) tts()?.stop?.().catch(() => {});
-  else if ('speechSynthesis' in window) speechSynthesis.cancel();
-}
+// the shared player and sound context (null until unlock())
+export const sound = () => ({ player, context });
 
 export async function canListen() {
   if (native()) {

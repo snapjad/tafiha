@@ -4,7 +4,7 @@
 //
 //   const m = await createMentor(el);
 //   m.mood('smile');            // 'rest' | 'smile' | 'attentive'
-//   m.speak(audioElement);      // mouth follows the sound until it ends
+//   m.speak(audioElement, ctx); // mouth follows the sound until it ends (ctx: an AudioContext a tap started)
 //   m.destroy();
 
 const MOODS = {
@@ -64,16 +64,21 @@ export async function createMentor(host) {
     // for sound that isn't an <audio> element: call with the loudness (0…1) as it plays, then quiet()
     level(v) { talking = true; mouthFor(v); },
     quiet: stop,
-    speak(audio) {
+    speak(audio, ctx) {
       stop();
       if (RM) return;
       try {
-        audioCtx ||= new (window.AudioContext || window.webkitAudioContext)();
-        const src = audio.__mentorSource ||= audioCtx.createMediaElementSource(audio);
-        const an = audioCtx.createAnalyser();
-        an.fftSize = 256;
-        src.connect(an);
-        an.connect(audioCtx.destination);
+        audioCtx = ctx || audioCtx || new (window.AudioContext || window.webkitAudioContext)();
+        audioCtx.resume?.().catch(() => {});
+        // one source and analyser per audio element, made once (an element can only be wired once)
+        audio.__mentorSource ||= audioCtx.createMediaElementSource(audio);
+        if (!audio.__mentorAnalyser) {
+          audio.__mentorAnalyser = audioCtx.createAnalyser();
+          audio.__mentorAnalyser.fftSize = 256;
+          audio.__mentorSource.connect(audio.__mentorAnalyser);
+          audio.__mentorAnalyser.connect(audioCtx.destination);
+        }
+        const an = audio.__mentorAnalyser;
         const buf = new Uint8Array(an.fftSize);
         talking = true;
         let shown = 0;
@@ -90,6 +95,6 @@ export async function createMentor(host) {
         audio.addEventListener('pause', stop, { once: true });
       } catch { stop(); }
     },
-    destroy() { alive = false; stop(); clearTimeout(blinkTimer); audioCtx?.close?.(); svg.remove(); },
+    destroy() { alive = false; stop(); clearTimeout(blinkTimer); svg.remove(); }, // the sound context is shared; it stays open
   };
 }
