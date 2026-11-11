@@ -218,7 +218,8 @@ Deno.serve(async (req) => {
     if (error instanceof Anthropic.RateLimitError) return send(429, { error: "busy" });
     if (error instanceof Anthropic.APIError) {
       console.error("mentor", error.status, error.message);
-      return send(502, { error: "upstream", status: error.status }); // the status only, never the message
+      // the status and, for an empty balance, "credit"; never the message itself
+      return send(502, { error: "upstream", status: error.status, ...(/credit balance/i.test(error.message) ? { why: "credit" } : {}) });
     }
     console.error("mentor", error);
     return send(500, { error: "failed" });
