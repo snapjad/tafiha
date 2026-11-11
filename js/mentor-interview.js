@@ -14,9 +14,15 @@ const esc = (v) => String(v ?? '').replace(/[&<>"']/g, (c) => `&#${c.charCodeAt(
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
 // on for everyone once MENTOR_ON is set; until then a tester turns it on with localStorage
+// (or by opening tafiha.com/?mentor=1 once, which is easier on a phone; ?mentor=0 turns it off)
 export function mentorEnabled() {
   if (MENTOR_ON) return true;
-  try { return localStorage.getItem('tafiha.mentor') === '1'; } catch { return false; }
+  try {
+    const q = new URL(location.href).searchParams.get('mentor');
+    if (q === '1') localStorage.setItem('tafiha.mentor', '1');
+    if (q === '0') localStorage.removeItem('tafiha.mentor');
+    return localStorage.getItem('tafiha.mentor') === '1';
+  } catch { return false; }
 }
 
 // Arabic letters compared loosely: no vowel marks or stretching, one alef, ى = ي, ة = ه
