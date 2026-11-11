@@ -167,6 +167,24 @@ const SECTIONS = [
 // ---------------------------------------------------------------- one question per screen
 // Every item becomes its own screen; a group of numbers shares one screen.
 // Single choices move on by themselves, so most answers are a single tap.
+// every question there is, whatever the answers so far
+export function everyQuestion() {
+  const out = [];
+  for (const sec of SECTIONS) {
+    for (const it of sec.items) {
+      if (it.type === 'text') continue;
+      if (it.type === 'group') it.items.forEach((x) => out.push({ it: x, group: it.title, sec }));
+      else out.push({ it, sec });
+    }
+  }
+  return out;
+}
+
+// Answers the guide may pick up from what someone says in passing. Health, medicines, age and how
+// to quit always get asked outright, because the plan's safety depends on them.
+export const ASK_OUTRIGHT = new Set(['age', 'pregnancy', 'conditions', 'meds', 'rx', 'nrt_now', 'gum_mg', 'gum_max',
+  'patch_mg', 'nrt_pref', 'quitMode', 'when', 'pastDate', 'futureDate', 'approach']);
+
 export function buildSteps(a) {
   const steps = [{ key: 'intro', intro: true }];
   for (const sec of SECTIONS) {

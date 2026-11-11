@@ -7,7 +7,7 @@
 // answers and writes the guide's reply in his own words, or says one fixed sentence when it is
 // off topic. The guide's voice is a Jordanian neural voice made by the same function; listening is
 // the phone's own, free. Without the server the words stay on screen and taps keep working.
-import { buildSteps, choiceOptions, finalize } from './assessment.js';
+import { buildSteps, choiceOptions, finalize, everyQuestion, ASK_OUTRIGHT } from './assessment.js';
 import { createMentor } from './mentor.js';
 import * as Voice from './voice.js';
 import { SUPABASE_URL, SUPABASE_ANON, MENTOR_ON } from './config.js';
@@ -266,6 +266,21 @@ export function runMentorInterview(prev = {}) {
     }
 
     // a reply → the answer's value, or a sentence to say before asking again
+    // answers to later questions the person gave in passing («باكيت باليوم من عشر سنين»); never the
+    // ones that must be asked outright, and never over an answer already given
+    const QUESTIONS = new Map(everyQuestion().map((x) => [x.it.id, x.it]));
+    function keepHeard(list) {
+      for (const x of Array.isArray(list) ? list : []) {
+        const q = QUESTIONS.get(x.id);
+        if (!q || ASK_OUTRIGHT.has(q.id) || a[q.id] !== undefined) continue;
+        if (q.type === 'num' || q.type === 'scale') { if (Number.isFinite(x.number) && x.number > 0) a[q.id] = x.number; continue; }
+        const values = (x.picks || []).map(Number).filter((i) => Number.isInteger(i) && q.options?.[i]).map((i) => q.options[i][0]);
+        if (!values.length) continue;
+        if (q.type === 'choice') { if (values.length === 1) a[q.id] = values[0]; }
+        else a[q.id] = values;
+      }
+    }
+
     async function understand(r, it, step) {
       if (r.date !== undefined) {
         if (!Number.isFinite(r.date)) return { again: 'اختار التاريخ.' };
@@ -277,7 +292,8 @@ export function runMentorInterview(prev = {}) {
       if (!got) {
         try {
           const out = await askServer({ q: serverQuestion(it, step, a), text: r.text.slice(0, 400), history: history.slice(0, -1), ...(a.name ? { name: a.name } : {}) });
-          if (out.kind !== 'answer') return { again: out.reply, mood: out.kind === 'urgent' ? 'attentive' : 'rest' };
+          keepHeard(out.also);
+          if (out.kind !== 'answer') return { again: out.reply, mood: out.kind === 'urgent' ? 'attentive' : out.kind === 'discuss' ? 'attentive' : 'rest' };
           got = out.picks ? { picks: out.picks.map(Number) } : { number: out.number };
           said = out.reply || '';
         } catch (e) {
