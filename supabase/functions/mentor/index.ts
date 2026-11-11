@@ -168,7 +168,7 @@ Deno.serve(async (req) => {
 
   // ceilings: per network address and for the whole app, so the bill is bounded (supabase/mentor.sql)
   const ip = (req.headers.get("x-forwarded-for") || "").split(",")[0].trim() || "unknown";
-  const { data: allowed, error: limitError } = await db.rpc("tafiha_mentor_take", { who: await sha256(ip) });
+  const { data: allowed, error: limitError } = await db.rpc("tafiha_mentor_take", { caller: await sha256(ip) });
   if (limitError || allowed !== true) return send(429, { error: "busy" });
 
   if (asSay.success) {
@@ -218,7 +218,7 @@ Deno.serve(async (req) => {
     if (error instanceof Anthropic.RateLimitError) return send(429, { error: "busy" });
     if (error instanceof Anthropic.APIError) {
       console.error("mentor", error.status, error.message);
-      return send(502, { error: "upstream" });
+      return send(502, { error: "upstream", status: error.status }); // the status only, never the message
     }
     console.error("mentor", error);
     return send(500, { error: "failed" });

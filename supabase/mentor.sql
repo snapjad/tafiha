@@ -16,16 +16,17 @@ alter table public.tafiha_mentor_usage enable row level security;
 revoke all on public.tafiha_mentor_usage from public, anon, authenticated;
 
 -- true when this call fits: 300 calls an hour per address (an interview is about 40 turns, each understood and spoken), 40000 a day in all
-create or replace function public.tafiha_mentor_take(who text) returns boolean
+drop function if exists public.tafiha_mentor_take(text);
+create function public.tafiha_mentor_take(caller text) returns boolean
 language plpgsql security definer set search_path = ''
 as $$
 declare mine integer; everyone integer;
 begin
-  if who is null or length(who) <> 64 then return false; end if;
-  insert into public.tafiha_mentor_usage as u (who, slot, n) values (who, date_trunc('hour', now()), 1)
-  on conflict (who, slot) do update set n = u.n + 1 returning n into mine;
+  if caller is null or length(caller) <> 64 then return false; end if;
+  insert into public.tafiha_mentor_usage as u (who, slot, n) values (caller, date_trunc('hour', now()), 1)
+  on conflict on constraint tafiha_mentor_usage_pkey do update set n = u.n + 1 returning u.n into mine;
   insert into public.tafiha_mentor_usage as u (who, slot, n) values ('*', date_trunc('day', now()), 1)
-  on conflict (who, slot) do update set n = u.n + 1 returning n into everyone;
+  on conflict on constraint tafiha_mentor_usage_pkey do update set n = u.n + 1 returning u.n into everyone;
   if random() < 0.01 then
     delete from public.tafiha_mentor_usage where slot < now() - interval '2 days';
   end if;
