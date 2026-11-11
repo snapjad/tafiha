@@ -69,17 +69,29 @@ export async function listen() {
     rec.interimResults = false;
     rec.maxAlternatives = 1;
     let heard = '';
-    rec.onresult = (ev) => { heard = String(ev.results?.[0]?.[0]?.transcript || '').trim(); };
+    rec.onresult = (ev) => {
+      heard = String(ev.results?.[0]?.[0]?.transcript || '').trim();
+      if (ev.results?.[0]?.isFinal) { try { rec.abort(); } catch { /* ended */ } }
+    };
     rec.onerror = (ev) => {
       if (ev.error === 'not-allowed' || ev.error === 'service-not-allowed') reject(Object.assign(new Error('denied'), { code: 'denied' }));
       // no-speech, aborted, network…: ends with nothing heard
     };
-    rec.onend = () => { webRec = null; resolve(heard); };
+    rec.onend = () => { if (webRec === rec) webRec = null; resolve(heard); };
     try { rec.start(); } catch { resolve(''); }
   });
 }
 
-export function stopListening() {
-  if (native()) stt()?.stop?.().catch(() => {});
-  else webRec?.stop();
+// soft: finish and keep what was said (the person tapped the mic again);
+// hard: drop it and free the microphone at once (leaving), so the phone's mic light goes off
+export function stopListening(hard = false) {
+  if (native()) { stt()?.stop?.().catch(() => {}); return; }
+  try { hard ? webRec?.abort() : webRec?.stop(); } catch { /* already ended */ }
+  if (hard) webRec = null;
+}
+
+// leaving the page or the app (another app, the home screen, a locked phone) frees the microphone
+if (typeof document !== 'undefined') {
+  document.addEventListener('visibilitychange', () => { if (document.hidden) stopListening(true); });
+  addEventListener('pagehide', () => stopListening(true));
 }

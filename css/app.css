@@ -33,9 +33,11 @@
 }
 
 * { box-sizing: border-box; }
-html { -webkit-text-size-adjust: 100%; }
+/* nothing may widen the page past the phone's screen (Safari then zooms out and cuts both sides) */
+html { -webkit-text-size-adjust: 100%; overflow-x: clip; }
 body {
   margin: 0;
+  overflow-x: clip;
   background: var(--bg);
   color: var(--ink);
   font-family: var(--f-body);
@@ -402,7 +404,7 @@ a.btn { text-decoration: none; }
 .boot-status { display: none; }
 .booting > .app, .booting > .tabbar { visibility: hidden; }
 .booting > .boot-status {
-  position: fixed; inset: 0; display: flex; flex-direction: column; align-items: center; gap: 16px;
+  position: fixed; inset: 0; overflow: hidden; display: flex; flex-direction: column; align-items: center; gap: 16px;
   padding: 24px 24px calc(36px + env(safe-area-inset-bottom)); background: var(--ink); color: #fff; text-align: center;
 }
 .boot-center { margin: auto 0; display: grid; justify-items: center; gap: 22px; }

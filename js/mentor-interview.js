@@ -191,7 +191,7 @@ export function runMentorInterview(prev = {}) {
       if (closed) return;
       closed = true;
       hush();
-      Voice.stopListening();
+      Voice.stopListening(true);
       face?.destroy();
       root.classList.add('leave');
       document.body.style.overflow = '';
