@@ -15,6 +15,7 @@ import { assertAssessment } from './security.js';
 import * as Content from './content.js';
 import * as Onboarding from './onboarding.js';
 import * as Notify from './notify.js';
+import { CLINICS, SOURCE as CLINICS_SOURCE, clinicCount, mapLink } from './clinics.js';
 
 const $ = (sel, root = document) => root.querySelector(sel);
 const RM = matchMedia('(prefers-reduced-motion: reduce)').matches;
@@ -309,6 +310,28 @@ function renderToday() {
     $('#homePatchLog').disabled = done;
     $('#homePatchLog').textContent = done ? 'مسجّلة اليوم' : 'سجّل لزقة';
   }
+}
+
+// the Ministry's quit clinics: pick a governorate, open a place in the maps app
+function openClinics() {
+  const chips = CLINICS.map((g, i) => `<button type="button" data-area="${i}" aria-pressed="${i === 0}">${esc(g.area)}</button>`).join('');
+  openSheet(`<h2>عيادات الإقلاع المعتمدة</h2>
+    <p class="sheet-sub">${clinicCount()} مركز صحي معتمد من وزارة الصحة لخدمة الإقلاع عن التدخين. اختار محافظتك:</p>
+    <div class="chips-row clinic-areas" role="group" aria-label="المحافظة">${chips}</div>
+    <ul class="clinic-list" id="clinicList" aria-live="polite"></ul>
+    <p class="clinic-note">اتصل بالمركز قبل ما تروح عشان تتأكد من أيام العيادة ومواعيدها. وخذ معك تقرير طفّيها، بيساعد الدكتور يعرف وضعك.</p>
+    <p class="clinic-src">المصدر: ${esc(CLINICS_SOURCE)}</p>
+    <button class="btn btn-ink" data-close>تمام</button>`, (sheet) => {
+    const list = sheet.querySelector('#clinicList');
+    const show = (i) => {
+      const g = CLINICS[i];
+      sheet.querySelectorAll('[data-area]').forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.area === String(i))));
+      list.innerHTML = g.places.map((p) => `<li><span>${esc(p)}</span>
+        <a href="${mapLink(p, g.area)}" target="_blank" rel="noopener noreferrer"><svg class="ico" aria-hidden="true"><use href="#i-pin"/></svg>الخريطة</a></li>`).join('');
+    };
+    sheet.querySelectorAll('[data-area]').forEach((b) => { b.onclick = () => show(Number(b.dataset.area)); });
+    show(0);
+  });
 }
 
 function openReplacementHelp(type) {
@@ -1442,6 +1465,7 @@ function start() {
     toast(`انضافت علبة. صار عندك ${S.patchStock(state)} لزقة`);
     renderToday();
   };
+  $('#clinicsBtn').onclick = openClinics;
   $('#planBtn').onclick = () => (state.assessment ? openReport(state.assessment) : intake(state));
   $('#prepList').addEventListener('click', (ev) => {
     const b = ev.target.closest('[data-prep]');

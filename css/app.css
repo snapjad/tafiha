@@ -801,6 +801,18 @@ a.btn { text-decoration: none; }
 .replacement-actions { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 12px; }
 .replacement-actions .btn { flex: 1 1 120px; min-height: 44px; padding: 10px; font-size: 13px; }
 .replacement-help { line-height: 1.9; margin-block: 16px; }
+
+/* the Ministry's quit clinics */
+.sheet-sub { margin: 4px 0 0; color: var(--smoke); line-height: 1.8; }
+.clinic-areas { margin-top: 14px; }
+.clinic-areas button { padding: 9px 15px; font-size: 14px; }
+.clinic-list { list-style: none; margin: 18px 0 0; padding: 0; display: grid; gap: 8px; }
+.clinic-list li { display: flex; align-items: center; gap: 12px; padding: 13px 16px; border-radius: 14px; background: var(--bg); font-weight: 500; line-height: 1.5; }
+.clinic-list li span { flex: 1; min-width: 0; }
+.clinic-list a { display: inline-flex; align-items: center; gap: 4px; flex: none; color: var(--ember); font-size: 14px; font-weight: 600; text-decoration: none; padding: 6px 2px; }
+.clinic-list a .ico { width: 17px; height: 17px; }
+.clinic-note { margin: 16px 0 0; font-size: 14px; line-height: 1.8; color: var(--smoke); }
+.clinic-src { margin: 8px 0 18px; font-size: 12px; line-height: 1.7; color: var(--smoke); opacity: .8; }
 .replacement-help ol { padding-inline-start: 24px; }
 .today-ico { width: 58px; height: 58px; flex: none; animation: bob 5s ease-in-out infinite; }
 .today-txt { flex: 1; min-width: 0; }
