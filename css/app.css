@@ -872,7 +872,7 @@ a.btn { text-decoration: none; }
 @keyframes fade-in { from { opacity: 0; } to { opacity: 1; } }
 
 /* off-screen copy of the report used to draw the PDF at a fixed width */
-.pdf-render { position: fixed; top: 0; left: 0; width: 760px; z-index: -1; pointer-events: none; background: #fff; }
+.pdf-render { position: fixed; top: 0; left: 0; width: 900px; z-index: -1; pointer-events: none; background: #fff; }
 .pdf-render *, .pdf-render *::before, .pdf-render *::after { animation: none !important; transition: none !important; }
 .pdf-render .rp-doc { padding: 0; gap: 0; }
 .pdf-render .rp-doc > * { margin-bottom: 0; }
@@ -881,6 +881,39 @@ a.btn { text-decoration: none; }
 .pdf-render .rx-src summary::after, .pdf-render .rx-more { display: none; }
 .pdf-render .rx-lead { margin-bottom: 12px; }
 .pdf-render .rx-cal { box-shadow: none; border: 1px solid rgba(0, 0, 0, .08); }
+/* two pages: sections in pairs, less air, the long explanations left to the app */
+.pdf-render .rx-pair { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; align-items: stretch; }
+.pdf-render .rp-sec { padding: 14px 16px; }
+.pdf-render .rp-sec h3 { font-size: 18px; margin-bottom: 8px; }
+.pdf-render .rx-title { gap: 10px; }
+.pdf-render .rx-title p { font-size: 13px; }
+.pdf-render .rx-title .rx-pic { width: 40px; height: 40px; }
+.pdf-render .rx-k { margin: 12px 0 6px; }
+.pdf-render .rx-lead { font-size: 13.5px; margin-top: 8px; }
+.pdf-render .rx-fine { margin-top: 8px; font-size: 11.5px; }
+.pdf-render .rx-head { padding: 18px 20px; }
+.pdf-render .rx-facts { margin-top: 12px; }
+.pdf-render .rx-meter { max-width: 170px; }
+.pdf-render .rx-meter-n b { font-size: 32px; }
+.pdf-render .rx-deps { grid-template-columns: 1fr; }
+.pdf-render .rx-cost { grid-template-columns: 1fr 1fr; }
+.pdf-render .rx-cost .big { grid-column: 1 / -1; }
+.pdf-render .rx-tiles, .pdf-render .rx-pair .rx-tiles { grid-template-columns: 1fr; gap: 6px; }
+.pdf-render .rx-tiles > div { grid-template-columns: 34px 1fr; column-gap: 10px; row-gap: 0; padding: 8px 10px; }
+.pdf-render .rx-tile-i { grid-row: span 2; width: 34px; height: 34px; margin: 0; }
+.pdf-render .rx-tiles b { font-size: 14px; }
+.pdf-render .rx-tiles p { font-size: 12.5px; }
+.pdf-render .rx-env li { padding: 8px 12px; font-size: 13px; }
+.pdf-render .rx-mot > div { padding: 8px; }
+.pdf-render .rx-ring { width: 64px; height: 64px; }
+.pdf-render .rx-how li { padding: 8px 10px; }
+.pdf-render .rx-journey { grid-template-columns: 1fr 1fr; column-gap: 18px; }
+.pdf-render .rx-journey > li { padding-bottom: 10px; }
+.pdf-render .rx-journey > li::before { display: none; }
+.pdf-render .rx-ph-key { font-size: 13.5px; margin-top: 4px; }
+.pdf-render .rx-ph-nrt span { font-size: 12px; padding: 4px 8px; }
+.pdf-render .rx-pair .rx-fine, .pdf-render .rx-slim p { font-size: 12.5px; }
+.pdf-render .rp-foot { margin-top: 2px; font-size: 11px; }
 .pdf-render .rx-tiles { grid-template-columns: repeat(3, 1fr); }
 
 @media print {

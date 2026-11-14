@@ -270,7 +270,7 @@ export function reportHTML(a) {
     </div>
   </header>
 
-  <section class="rp-sec">
+  <section data-pdf="half" class="rp-sec">
     <h3>مستوى اعتمادك على النيكوتين</h3>
     <div class="rx-deps">${deps.map((x) => `<div class="rx-dep">
       ${meter(x.d.score, x.max, `اعتماد ${x.d.label}`)}
@@ -280,7 +280,7 @@ export function reportHTML(a) {
     <p class="rx-lead">${LEVEL_TEXT[r.dep.level]}</p>
   </section>
 
-  <section class="rp-sec">
+  <section data-pdf="half" class="rp-sec">
     <h3>كم بيكلّفك</h3>
     <div class="rx-cost">
       <div><strong>${money(r.perDay)}</strong><span>د.أ باليوم</span></div>
@@ -295,7 +295,7 @@ export function reportHTML(a) {
     ${txBody}
   </section>
 
-  <section class="rp-sec">
+  <section data-pdf="half" class="rp-sec">
     <div class="rx-title">${ico('route', '#e1261c', 40)}<div><h3>طريقتك للترك: ${r.reviewReason ? 'راجع موعد الإقلاع' : ap.t}</h3><p>${r.reviewReason || ap.d}</p></div></div>
     ${schedRows ? `<div class="rx-cuts">${schedRows}<div class="rx-cut rx-cut-q"><span>يوم الإقلاع</span><i style="--w:0%"></i><b>${dateAr(r.quitAt)}</b></div></div>` : ''}
     ${r.approach !== 'abrupt' ? '<p class="rx-fine">خلال التخفيف سجّل كل وحدة بالتطبيق، وأجّل أول وحدة الصبح. وإذا قدرت توقف قبل الموعد، وقف.</p>' : ''}
@@ -303,7 +303,7 @@ export function reportHTML(a) {
     <p class="rx-fine">${ico('info', '#726c69', 14)} يوم الإقلاع هو يوم وقف التدخين أو الفيب، مش نهاية استخدام البدائل؛ العلاج والمتابعة ممكن يستمروا بعده.</p>
   </section>
 
-  <section class="rp-sec rx-slim">
+  <section data-pdf="half" class="rp-sec rx-slim">
     <div class="rx-title">${ico('pill', '#e1261c', 36)}<div><h3>أدوية بوصفة الدكتور</h3><p>الفارينكلين والسيتيسين بيخففوا الرغبة، والبوبروبيون بيخفف الانسحاب. معتمدين من منظمة الصحة العالمية، وبيحتاجوا وصفة ومتابعة. اسأل عنهم بعيادة الإقلاع${r.dep.level >= 2 || a.attempts === '3+' ? '، خصوصاً إنه اعتمادك عالي أو جرّبت قبل' : ''}.</p></div></div>
   </section>
 
@@ -312,20 +312,20 @@ export function reportHTML(a) {
     <ol class="rx-journey">${phaseHTML}</ol>
   </section>
 
-  ${r.triggers.length ? `<section class="rp-sec">
+  ${r.triggers.length ? `<section data-pdf="half" class="rp-sec">
     <h3>لحظاتك الصعبة وخطة لكل وحدة</h3>
     <div class="rx-tiles">${r.triggers.map((t) => `<div><span class="rx-tile-i">${ico(t.id, '#e1261c', 26)}</span><b>${t.label}</b><p>${Content.text('craving', t.id, t.plan)}</p></div>`).join('')}</div>
   </section>` : ''}
 
-  <section class="rp-sec">
+  <section data-pdf="half" class="rp-sec">
     <h3>شو ممكن تحس فيه</h3>
     <p class="rx-lead">${r.withdrawal.length ? 'اللي حسّيت فيه بمحاولاتك قبل، وكيف تتعامل معه. كله مؤقت:' : 'أشهر أعراض الانسحاب، وكلها مؤقتة:'}</p>
     <div class="rx-tiles rx-tiles-soft">${felt.map((w) => `<div><span class="rx-tile-i">${ico(w.id, '#7a4d12', 26)}</span><b>${w.label}</b><p>${w.tip}</p></div>`).join('')}</div>
   </section>
 
-  ${env.length ? `<section class="rp-sec"><h3>محيطك</h3><ul class="rx-env">${env.map(([i, t]) => `<li>${ico(i, '#1b1716', 22)}<span>${t}</span></li>`).join('')}</ul></section>` : ''}
+  ${env.length ? `<section data-pdf="half" class="rp-sec"><h3>محيطك</h3><ul class="rx-env">${env.map(([i, t]) => `<li>${ico(i, '#1b1716', 22)}<span>${t}</span></li>`).join('')}</ul></section>` : ''}
 
-  <section class="rp-sec">
+  <section data-pdf="half" class="rp-sec">
     <h3>دافعك</h3>
     <div class="rx-mot">
       <div>${ring(r.importance, '#e1261c')}<span>قديش مهم إلك</span></div>
@@ -335,21 +335,15 @@ export function reportHTML(a) {
     ${(a.reasons || []).length ? `<div class="chips-static">${a.reasons.map((x) => `<span>${esc(Object.hasOwn(REASONS, x) ? REASONS[x] : x)}</span>`).join('')}</div>` : ''}
   </section>
 
-  ${r.safe.notes.length ? `<section class="rp-sec"><h3>ملاحظات صحية</h3>${callout('note', '', list(r.safe.notes, 'info', '#7a4d12'))}</section>` : ''}
+  ${r.safe.notes.length ? `<section data-pdf="half" class="rp-sec"><h3>ملاحظات صحية</h3>${callout('note', '', list(r.safe.notes, 'info', '#7a4d12'))}</section>` : ''}
 
-  ${refer.length ? `<section class="rp-sec rp-refer">
+  ${refer.length ? `<section data-pdf="half" class="rp-sec rp-refer">
     <div class="rx-title">${ico('pin', '#e1261c', 36)}<div><h3>بنصحك تزور عيادة إقلاع</h3><p>العيادة بتعطيك متابعة، وممكن أدوية بوصفة. خذ معك هالتقرير.</p></div></div>
     ${list(refer, 'check', '#e1261c')}
     <p class="rx-fine">قائمة عيادات وزارة الصحة المعتمدة بكل المحافظات موجودة بالتطبيق، بصفحة «خطتي».</p>
   </section>` : ''}
 
-  <section class="rp-sec rp-sources">
-    <details class="rx-src" data-pdf-open><summary><h3>المصادر</h3></summary>
-      <ul>${r.sources.map((x) => `<li>${x}</li>`).join('')}</ul>
-    </details>
-  </section>
-
-  <p class="rp-foot">تقرير إرشادي مبني على مقاييس علمية وإرشادات نشرات العلاج البديل ومراجعات كوكرين. مش بديل عن استشارة الدكتور أو الصيدلاني. ${products.map((p) => PRODUCT[p]).join(' و')}.</p>`;
+  <p class="rp-foot">خطة إرشادية مبنية على إرشادات منظمة الصحة العالمية، ومقاييس الاعتماد المعتمدة بعيادات الإقلاع، ومراجعات كوكرين. مش بديل عن استشارة الدكتور أو الصيدلاني.</p>`;
 }
 
 // ---------------------------------------------------------------- PDF
@@ -389,33 +383,67 @@ export async function buildPDF(a) {
     const pdf = new jsPDF({ unit: 'mm', format: 'a4', orientation: 'portrait', compress: true });
     const PW = 210;
     const PH = 297;
-    const M = 12;
+    const M = 10;
     const W = PW - 2 * M;
-    const GAP = 4;
+    const GAP = 3;
     let y = M;
 
-    for (const el of host.querySelectorAll('.rp-doc > *')) {
+    // two half-width sections in a row share one line of the page
+    const doc = host.querySelector('.rp-doc');
+    for (const el of [...doc.children]) {
+      const next = el.nextElementSibling;
+      if (el.dataset.pdf === 'half' && next?.dataset.pdf === 'half' && el.parentElement === doc) {
+        const pair = document.createElement('div');
+        pair.className = 'rx-pair';
+        el.before(pair);
+        pair.append(el, next);
+      }
+    }
+    // draw every block once, then find the largest size that fits the plan on two pages
+    const blocks = [];
+    for (const el of [...doc.children]) {
       const canvas = await window.html2canvas(el, { scale: 2, backgroundColor: '#ffffff', logging: false, useCORS: true });
-      const mmPerPx = W / canvas.width;
-      const h = canvas.height * mmPerPx;
-      const room = PH - M - y;
-      if (h <= PH - 2 * M) {
-        if (h > room) { pdf.addPage(); y = M; }
-        pdf.addImage(canvas.toDataURL('image/jpeg', 0.9), 'JPEG', M, y, W, h);
-        y += h + GAP;
+      blocks.push({ canvas, h: canvas.height * (W / canvas.width) }); // height in mm at full width
+    }
+    const TARGET = 2;
+    const usable = PH - 2 * M;
+    const pagesAt = (k) => {
+      let pages = 1;
+      let used = 0;
+      for (const b of blocks) {
+        const h = b.h * k;
+        if (used > 0 && used + h > usable) { pages++; used = 0; }
+        used += h + GAP * k;
+      }
+      return pages;
+    };
+    let k = 1;
+    if (pagesAt(1) > TARGET) {
+      let lo = 0.5, hi = 1;
+      for (let i = 0; i < 14; i++) { const mid = (lo + hi) / 2; if (pagesAt(mid) <= TARGET) lo = mid; else hi = mid; }
+      k = lo; // never below half size: past that it takes a third page instead
+    }
+    const w = W * k;
+    const x = M + (W - w) / 2;
+    for (const b of blocks) {
+      const h = b.h * k;
+      if (y > M && y + h > PH - M) { pdf.addPage(); y = M; }
+      if (h <= usable) {
+        pdf.addImage(b.canvas.toDataURL('image/jpeg', 0.9), 'JPEG', x, y, w, h);
+        y += h + GAP * k;
         continue;
       }
       // taller than a page: slice it across pages
-      if (y > M) { pdf.addPage(); y = M; }
-      const slicePx = Math.floor((PH - 2 * M) / mmPerPx);
-      for (let top = 0; top < canvas.height; top += slicePx) {
+      const mmPerPx = w / b.canvas.width;
+      const slicePx = Math.floor(usable / mmPerPx);
+      for (let top = 0; top < b.canvas.height; top += slicePx) {
         const part = document.createElement('canvas');
-        part.width = canvas.width;
-        part.height = Math.min(slicePx, canvas.height - top);
-        part.getContext('2d').drawImage(canvas, 0, top, canvas.width, part.height, 0, 0, canvas.width, part.height);
+        part.width = b.canvas.width;
+        part.height = Math.min(slicePx, b.canvas.height - top);
+        part.getContext('2d').drawImage(b.canvas, 0, top, b.canvas.width, part.height, 0, 0, b.canvas.width, part.height);
         if (top > 0) { pdf.addPage(); y = M; }
-        pdf.addImage(part.toDataURL('image/jpeg', 0.9), 'JPEG', M, y, W, part.height * mmPerPx);
-        y += part.height * mmPerPx + GAP;
+        pdf.addImage(part.toDataURL('image/jpeg', 0.9), 'JPEG', x, y, w, part.height * mmPerPx);
+        y += part.height * mmPerPx + GAP * k;
       }
     }
 

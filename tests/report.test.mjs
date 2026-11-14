@@ -33,7 +33,7 @@ const text = reportHTML(a).replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ');
 check('no "undefined" or "NaN" anywhere', !/undefined|NaN/.test(text));
 check('report explains the chosen way to quit', text.includes('طريقتك للترك'));
 check('report lists prescription medicines', text.includes('أدوية بوصفة الدكتور'));
-check('report lists its sources', text.includes('المصادر') && text.includes('منظمة الصحة العالمية'));
+check('report names what it is built on', text.includes('منظمة الصحة العالمية') && !text.includes('المصادر'));
 const g = reportHTML({ ...a, approach: 'gradual-long', confidence: 6 }).replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ');
 check('unsupported vape plan requests review instead of weekly allowances', g.includes('راجع موعد الإقلاع') && !g.includes('الأسبوع 12'));
 check('report separates quit day from treatment duration', text.includes('مش نهاية استخدام البدائل'));
