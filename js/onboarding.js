@@ -156,7 +156,7 @@ function screens(consult) {
         <div class="intro-card intro-timeline">
           ${[
             'أسئلة سريعة عنك وعن عادتك',
-            'حساب مجاني (بـ Google أو بالإيميل)، حتى تنحفظ خطتك على كل أجهزتك',
+            'حساب مجاني بإيميلك، حتى تنحفظ خطتك على كل أجهزتك',
             'تقريرك وخطتك، وبتبلّش',
           ].map((t, i) => `<div class="intro-tl${i === 2 ? ' end' : ''}"><span class="intro-num big${i === 2 ? ' ember' : ''}">${i + 1}</span><span>${t}</span></div>`).join('')}
         </div>
