@@ -346,6 +346,7 @@ function runSparks() {
   }, SPARK_MS);
 }
 function initSparks() {
+  if (!$('#nudge')) return; // an older page without the card (an update still arriving)
   sparkN = loadSpark();
   saveSpark(sparkN + 1);
   $('#nudge').style.setProperty('--nudge-ms', `${SPARK_MS}ms`);
@@ -1532,8 +1533,9 @@ function start() {
     toast(`انضافت علبة. صار عندك ${S.patchStock(state)} لزقة`);
     renderToday();
   };
-  $('#clinicsBtn').onclick = openClinics;
-  $('#guideBtn').onclick = () => openGuide();
+  // newer cards: skip quietly if this page is from before them (an update still arriving)
+  if ($('#clinicsBtn')) $('#clinicsBtn').onclick = openClinics;
+  if ($('#guideBtn')) $('#guideBtn').onclick = () => openGuide();
   initSparks();
   $('#planBtn').onclick = () => (state.assessment ? openReport(state.assessment) : intake(state));
   $('#prepList').addEventListener('click', (ev) => {
@@ -1556,7 +1558,8 @@ function start() {
 
 }
 
-boot().catch(() => {
+boot().catch((e) => {
+  console.error('boot failed', e);
   Sync.stop();
   const status = document.getElementById('bootStatus');
   status.innerHTML = '<p>ما قدرنا نفتح رحلتك. بياناتك المحفوظة لسه موجودة.</p><button class="btn btn-red" id="bootRetry">حاول كمان مرة</button>';
