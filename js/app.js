@@ -18,6 +18,7 @@ import * as Notify from './notify.js';
 import { CLINICS, SOURCE as CLINICS_SOURCE, clinicCount, mapLink } from './clinics.js';
 import { GUIDE, SOURCES as GUIDE_SOURCES } from './guide.js';
 import { sparkAt, loadSpark, saveSpark } from './sparks.js';
+import * as Track from './track.js';
 
 const $ = (sel, root = document) => root.querySelector(sel);
 const RM = matchMedia('(prefers-reduced-motion: reduce)').matches;
@@ -1332,6 +1333,7 @@ async function welcome(error) {
       mode = await Onboarding.run({ consult }) === 'login' ? 'login' : answers ? 'gate' : null;
     }
     if (!answers && mode !== 'login') {
+      Track.count('start');
       let r = await runAssessment({}, { onLogin: true, onHome: true, mentor: mentorEnabled() });
       // the spoken interview with the virtual guide; closing it goes back to the written one
       while (r.__mentor) {
@@ -1340,7 +1342,7 @@ async function welcome(error) {
       }
       if (r.__home) { intro = true; continue; }
       if (r.__login) mode = 'login';
-      else { answers = r; savePending(answers); mode = 'gate'; }
+      else { answers = r; savePending(answers); mode = 'gate'; Track.count('done'); }
     }
     const result = await Auth.runAuth({ mode, name: answers?.name, error, onRedirect: () => answers && savePending(answers) });
     error = '';
@@ -1351,6 +1353,7 @@ async function welcome(error) {
 }
 
 async function boot() {
+  Track.countVisit();
   // Never run inside someone else's page: a framing site could trick people into
   // clicking (clickjacking). GitHub Pages can't send a frame-ancestors header.
   if (window.top !== window.self) {

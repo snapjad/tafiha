@@ -132,6 +132,12 @@ button, input, select { font: inherit; color: inherit; }
 .adm-empty-card p { margin: 0; color: var(--smoke); }
 
 /* content */
+.adm-funnel { display: grid; gap: 12px; grid-template-columns: repeat(auto-fill, minmax(min(100%, 200px), 1fr)); margin-bottom: 12px; }
+.adm-step { background: var(--paper); border-radius: var(--r); box-shadow: var(--shadow); padding: 16px 18px; display: grid; gap: 4px; }
+.adm-step small { color: var(--smoke); font-size: 12.5px; min-height: 1.2em; }
+.adm-step-bar { height: 6px; border-radius: 6px; background: var(--line); overflow: hidden; margin-top: 4px; }
+.adm-step-bar i { display: block; height: 100%; width: var(--w); border-radius: 6px; background: var(--ember); }
+.adm-note { margin-top: 10px; font-size: 13px; }
 .adm-tabs { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 16px; }
 .adm-tabs button { min-height: 40px; padding: 0 16px; border: 1px solid var(--line); border-radius: 99px; background: var(--paper); cursor: pointer; font-weight: 500; }
 .adm-tabs button[aria-selected='true'] { background: var(--ink); border-color: var(--ink); color: #fff; }

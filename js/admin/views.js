@@ -10,6 +10,35 @@ async function call(ctx, name, args = {}) {
 
 // ---------------------------------------------------------------- numbers
 
+// visits → interview → account, for the last 7 / 30 / 90 days
+async function funnel(box, ctx, days = 7) {
+  const f = await call(ctx, 'tafiha_admin_funnel', { days });
+  const t = f.totals;
+  const of = (n, base) => (base ? `${Math.round((n / base) * 100)}% من الزوار` : '');
+  const steps = [
+    ['زوار', t.visit, `منهم ${fmtNum(t.instagram)} من إنستغرام`],
+    ['بلّشوا المقابلة', t.start, of(t.start, t.visit)],
+    ['كمّلوا المقابلة', t.done, of(t.done, t.visit)],
+    ['عملوا حساب', t.accounts, of(t.accounts, t.visit)],
+  ];
+  const max = Math.max(1, ...f.daily.map((d) => d.visit));
+  box.innerHTML = `
+    <div class="adm-tabs" role="tablist" aria-label="المدة">
+      ${[7, 30, 90].map((d) => `<button type="button" role="tab" data-days="${d}" aria-selected="${d === days}">آخر ${d} يوم</button>`).join('')}
+    </div>
+    <section class="adm-funnel">
+      ${steps.map(([label, n, note]) => `<div class="adm-step">
+        <span class="adm-stat-label">${label}</span><b class="adm-num">${fmtNum(n)}</b>
+        <span class="adm-step-bar"><i style="--w:${t.visit ? Math.max(2, Math.round((n / t.visit) * 100)) : 0}%"></i></span>
+        <small>${note}</small></div>`).join('')}
+    </section>
+    <div class="adm-card adm-chart" role="img" aria-label="رسم للزوار كل يوم">
+      ${f.daily.map((d) => `<span class="adm-bar" style="--h:${Math.round((d.visit / max) * 100)}%" title="${esc(fmtDate(d.day))}: ${d.visit} زائر · ${d.instagram} من إنستغرام · ${d.done} كمّلوا المقابلة · ${d.accounts} حساب"><i></i></span>`).join('')}
+    </div>
+    <p class="adm-sub adm-note">الزائر = جهاز فتح الموقع، بينحسب مرة وحدة باليوم. الأرقام مجمّعة بس: ما بنحفظ أي معلومة عن الشخص أو جهازه. العدّاد شغّال من 14 تشرين الثاني 2026.</p>`;
+  box.querySelectorAll('[data-days]').forEach((b) => { b.onclick = () => funnel(box, ctx, Number(b.dataset.days)).catch(() => {}); });
+}
+
 async function stats(el, ctx) {
   const s = await call(ctx, 'tafiha_admin_stats');
   const card = (label, value, note = '') => `<div class="adm-stat"><span class="adm-stat-label">${label}</span><b class="adm-num">${value}</b>${note ? `<small>${note}</small>` : ''}</div>`;
@@ -18,6 +47,9 @@ async function stats(el, ctx) {
   el.innerHTML = `
     <h1>الأرقام</h1>
     <p class="adm-sub">أرقام مجمّعة بس، بدون بيانات أي شخص لحاله.</p>
+    <h2>من الزيارة للحساب</h2>
+    <div id="admFunnel"><p class="adm-sub">عم نجيب الأرقام…</p></div>
+    <h2>الحسابات</h2>
     <section class="adm-grid">
       ${card('كل الحسابات', fmtNum(s.accounts), `${fmtNum(s.confirmed)} إيميلهم مأكّد`)}
       ${card('حسابات جديدة', fmtNum(s.new7), `آخر 7 أيام · ${fmtNum(s.new30)} آخر 30 يوم`)}
@@ -44,6 +76,7 @@ async function stats(el, ctx) {
     <div class="adm-card adm-chart" role="img" aria-label="رسم للحسابات الجديدة بآخر 30 يوم">
       ${s.signups.map((d) => `<span class="adm-bar" style="--h:${Math.round((d.n / max) * 100)}%" title="${esc(fmtDate(d.day))}: ${d.n}"><i></i></span>`).join('')}
     </div>`;
+  funnel(el.querySelector('#admFunnel'), ctx).catch(() => { el.querySelector('#admFunnel').innerHTML = '<p class="adm-sub">ما قدرنا نجيب أرقام الزوار هلأ.</p>'; });
 }
 
 // ---------------------------------------------------------------- accounts
