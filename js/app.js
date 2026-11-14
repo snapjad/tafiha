@@ -17,6 +17,7 @@ import * as Onboarding from './onboarding.js';
 import * as Notify from './notify.js';
 import { CLINICS, SOURCE as CLINICS_SOURCE, clinicCount, mapLink } from './clinics.js';
 import { GUIDE, SOURCES as GUIDE_SOURCES } from './guide.js';
+import { sparkAt, loadSpark, saveSpark } from './sparks.js';
 
 const $ = (sel, root = document) => root.querySelector(sel);
 const RM = matchMedia('(prefers-reduced-motion: reduce)').matches;
@@ -311,6 +312,46 @@ function renderToday() {
     $('#homePatchLog').disabled = done;
     $('#homePatchLog').textContent = done ? 'مسجّلة اليوم' : 'سجّل لزقة';
   }
+}
+
+// the home card that turns over: a tip, then a gain, a new one every few seconds
+const SPARK_MS = 11000;
+let sparkN = 0, sparkTimer = null;
+function showSpark(animate = true) {
+  const card = $('#nudge');
+  const s = sparkAt(sparkN);
+  const put = () => {
+    card.dataset.kind = s.kind;
+    $('#nudgeLabel').textContent = s.label;
+    $('#nudgeText').textContent = s.text;
+    card.classList.remove('is-out');
+    const bar = $('#nudgeBar');       // restart the progress line
+    bar.style.animation = 'none';
+    void bar.offsetWidth;
+    bar.style.animation = '';
+  };
+  if (animate && !RM) { card.classList.add('is-out'); setTimeout(put, 260); } else put();
+}
+function nextSpark() {
+  sparkN += 1;
+  saveSpark(sparkN + 1);              // the next visit opens on a new one
+  showSpark();
+}
+function runSparks() {
+  clearInterval(sparkTimer);
+  sparkTimer = setInterval(() => {
+    const home = document.querySelector('.page[data-page="home"]').classList.contains('is-active');
+    if (!document.hidden && home && $('#sheet').hidden) nextSpark();
+  }, SPARK_MS);
+}
+function initSparks() {
+  sparkN = loadSpark();
+  saveSpark(sparkN + 1);
+  $('#nudge').style.setProperty('--nudge-ms', `${SPARK_MS}ms`);
+  showSpark(false);
+  $('#nudgeNext').onclick = () => { nextSpark(); runSparks(); };
+  $('#nudgeAll').onclick = () => openGuide(sparkAt(sparkN).kind === 'gain' ? 'myths' : 'urge');
+  runSparks();
 }
 
 // the quit guide: pick a topic, open any tip
@@ -1490,6 +1531,7 @@ function start() {
   };
   $('#clinicsBtn').onclick = openClinics;
   $('#guideBtn').onclick = () => openGuide();
+  initSparks();
   $('#planBtn').onclick = () => (state.assessment ? openReport(state.assessment) : intake(state));
   $('#prepList').addEventListener('click', (ev) => {
     const b = ev.target.closest('[data-prep]');
