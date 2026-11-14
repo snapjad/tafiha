@@ -16,6 +16,7 @@ import * as Content from './content.js';
 import * as Onboarding from './onboarding.js';
 import * as Notify from './notify.js';
 import { CLINICS, SOURCE as CLINICS_SOURCE, clinicCount, mapLink } from './clinics.js';
+import { GUIDE, SOURCES as GUIDE_SOURCES } from './guide.js';
 
 const $ = (sel, root = document) => root.querySelector(sel);
 const RM = matchMedia('(prefers-reduced-motion: reduce)').matches;
@@ -310,6 +311,28 @@ function renderToday() {
     $('#homePatchLog').disabled = done;
     $('#homePatchLog').textContent = done ? 'مسجّلة اليوم' : 'سجّل لزقة';
   }
+}
+
+// the quit guide: pick a topic, open any tip
+function openGuide(topic = 'ready') {
+  const chips = GUIDE.map((g) => `<button type="button" data-topic="${g.id}">${esc(g.title)}</button>`).join('');
+  openSheet(`<h2>دليل الترك</h2>
+    <p class="sheet-sub">اختار الموضوع اللي بيهمّك هلّق:</p>
+    <div class="chips-row clinic-areas" role="group" aria-label="الموضوع">${chips}</div>
+    <div class="guide-body" id="guideBody" aria-live="polite"></div>
+    <p class="clinic-note">معلومات عامة مش بديل عن الدكتور. قبل أي دوا أو علاج بديل، اسأل دكتور أو صيدلي.</p>
+    <p class="clinic-src">المصادر: ${esc(GUIDE_SOURCES)}</p>
+    <button class="btn btn-ink" data-close>تمام</button>`, (sheet) => {
+    const body = sheet.querySelector('#guideBody');
+    const show = (id) => {
+      const g = GUIDE.find((x) => x.id === id) || GUIDE[0];
+      sheet.querySelectorAll('[data-topic]').forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.topic === g.id)));
+      body.innerHTML = (g.intro ? `<p class="guide-intro">${esc(g.intro)}</p>` : '')
+        + g.items.map(([t, d], i) => `<details class="guide-item"${i === 0 ? ' open' : ''}><summary>${esc(t)}</summary><p>${esc(d)}</p></details>`).join('');
+    };
+    sheet.querySelectorAll('[data-topic]').forEach((b) => { b.onclick = () => show(b.dataset.topic); });
+    show(topic);
+  });
 }
 
 // the Ministry's quit clinics: pick a governorate, open a place in the maps app
@@ -1466,6 +1489,7 @@ function start() {
     renderToday();
   };
   $('#clinicsBtn').onclick = openClinics;
+  $('#guideBtn').onclick = () => openGuide();
   $('#planBtn').onclick = () => (state.assessment ? openReport(state.assessment) : intake(state));
   $('#prepList').addEventListener('click', (ev) => {
     const b = ev.target.closest('[data-prep]');

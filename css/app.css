@@ -812,6 +812,14 @@ a.btn { text-decoration: none; }
 .clinic-list a { display: inline-flex; align-items: center; gap: 4px; flex: none; color: var(--ember); font-size: 14px; font-weight: 600; text-decoration: none; padding: 6px 2px; }
 .clinic-list a .ico { width: 17px; height: 17px; }
 .clinic-note { margin: 16px 0 0; font-size: 14px; line-height: 1.8; color: var(--smoke); }
+.guide-body { margin-top: 18px; display: grid; gap: 8px; }
+.guide-intro { margin: 0 0 6px; padding: 14px 16px; border-radius: 14px; background: #fde4e2; color: var(--ember-deep); line-height: 1.8; font-size: 14.5px; }
+.guide-item { border-radius: 14px; background: var(--bg); }
+.guide-item summary { cursor: pointer; padding: 14px 16px; font-weight: 600; line-height: 1.5; list-style: none; display: flex; align-items: center; gap: 10px; }
+.guide-item summary::-webkit-details-marker { display: none; }
+.guide-item summary::after { content: ''; margin-inline-start: auto; flex: none; width: 8px; height: 8px; border: solid var(--smoke); border-width: 0 2px 2px 0; transform: rotate(45deg); transition: transform .2s var(--out); }
+.guide-item[open] summary::after { transform: rotate(-135deg); }
+.guide-item p { margin: 0; padding: 0 16px 16px; line-height: 1.9; color: var(--ink); }
 .clinic-src { margin: 8px 0 18px; font-size: 12px; line-height: 1.7; color: var(--smoke); opacity: .8; }
 .replacement-help ol { padding-inline-start: 24px; }
 .today-ico { width: 58px; height: 58px; flex: none; animation: bob 5s ease-in-out infinite; }
