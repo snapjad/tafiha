@@ -39,7 +39,9 @@ eq('argileh weekly social', argilehIndex({ ar_perWeek: 1, ar_minutes: 'mid' }).l
 // Treatment choices
 const base = { products: ['cig'], cig_perDay: 20, cig_packSize: 20, cig_packPrice: 2.85, conditions: [], meds: [], age: '25-34', pregnancy: 'no', importance: 9, confidence: 6, attempts: '1-2' };
 const r1 = buildReport({ ...base, ...heavy, nrt_now: 'none', nrt_pref: 'advise' });
-eq('advise, high dependence → patch + gum', r1.tx.form, 'both');
+eq('advise, high dependence → gum (no patches in Jordan)', r1.tx.form, 'gum');
+eq('…and says why', r1.tx.notes.some((n) => n.includes('مش متوفرة')), true);
+eq('…and points to the clinic for prescribed medicines', r1.tx.notes.some((n) => n.includes('عيادة الإقلاع')), true);
 eq('>10/day → 21 mg step-down', r1.tx.patchSteps.map((x) => x.mg), [21, 14, 7]);
 eq('first cigarette ≤30 min → 4 mg gum', r1.tx.gumMg, 4);
 eq('cost per day', r1.perDay, 2.85);
@@ -50,7 +52,9 @@ eq('light smoker, some dependence → gum 2 mg, 14 mg patch if chosen', [r2b.tx.
 const r3 = buildReport({ ...base, ...heavy, conditions: ['skin'], nrt_now: 'none', nrt_pref: 'patch' });
 eq('skin condition swaps patch for gum', r3.tx.form, 'gum');
 const r4 = buildReport({ ...base, ...heavy, conditions: ['dentures'], nrt_now: 'none', nrt_pref: 'gum' });
-eq('dentures swap gum for patch', r4.tx.form, 'patch');
+eq('dentures: no gum, no patch → none, sent to a clinic', [r4.tx.form, r4.tx.notes.some((n) => n.includes('عيادة الإقلاع')), r4.tx.notes.some((n) => n.includes('اخترت بدون علاج'))], ['none', true, false]);
+const r4b = buildReport({ ...base, ...heavy, conditions: ['dentures'], nrt_now: 'patch', patch_mg: 21 });
+eq('dentures, already has patches → keeps the patch', r4b.tx.form, 'patch');
 const r5 = buildReport({ ...base, ...heavy, pregnancy: 'pregnant', nrt_now: 'none', nrt_pref: 'advise' });
 eq('pregnancy → see a doctor first', r5.safe.stop.length > 0 && r5.refer, true);
 const r6 = buildReport({ ...base, ...heavy, conditions: ['cardiac_recent'], nrt_now: 'none', nrt_pref: 'advise' });
@@ -58,7 +62,13 @@ eq('recent heart attack → see a doctor first', r6.safe.stop.length, 1);
 const r7 = buildReport({ products: ['argileh'], ar_perWeek: 2, ar_price: 3, ar_minutes: 'mid', conditions: [], meds: [], nrt_now: 'none', nrt_pref: 'patch', ar_stopHard: true });
 eq('weekly argileh: patch → gum when needed', r7.tx.form, 'gum');
 const r8 = buildReport({ products: ['vape'], vp_price: 8, vp_days: 4, vp_nicotine: 50, ...vHeavy, conditions: [], meds: [], nrt_now: 'none', nrt_pref: 'advise' });
-eq('heavy vaper, 50 mg/ml → patch 21 + gum 4', [r8.tx.form, r8.tx.patchSteps[0].mg, r8.tx.gumMg], ['both', 21, 4]);
+eq('heavy vaper, 50 mg/ml → gum 4 mg', [r8.tx.form, r8.tx.gumMg], ['gum', 4]);
+const r10 = buildReport({ ...base, ...heavy, nrt_now: 'none', nrt_pref: 'both' });
+eq('an old answer «both» becomes gum, with the reason', [r10.tx.form, r10.tx.notes.some((n) => n.includes('مش متوفرة'))], ['gum', true]);
+const r11 = buildReport({ ...base, ...heavy, nrt_now: 'both', gum_mg: 4, patch_mg: 21 });
+eq('already on patch + gum keeps both, no «not available» note', [r11.tx.form, r11.tx.notes.some((n) => n.includes('مش متوفرة'))], ['both', false]);
+const r12 = buildReport({ ...base, cig_perDay: 8, ftnd_ttfc: 'more', ftnd_hate: 'other', nrt_now: 'none', nrt_pref: 'advise' });
+eq('very low dependence: no «not available» note', r12.tx.notes.some((n) => n.includes('مش متوفرة')), false);
 eq('vape cost per day', r8.perDay, 2);
 const r9 = buildReport({ ...base, ...heavy, meds: ['antipsychotic'], nrt_now: 'gum', gum_mg: 4 });
 eq('medication warning', r9.safe.notes.some((n) => n.includes('الأدوية')), true);

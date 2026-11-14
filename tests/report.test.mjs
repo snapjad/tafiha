@@ -20,15 +20,14 @@ const a = {
 };
 
 const r = buildReport(a);
-check('advice for a heavy vaper is patch + gum', r.tx.form === 'both');
-check('patch starts at 21 mg', r.tx.patchSteps[0].mg === 21);
+check('advice for a heavy vaper is gum (no patches in Jordan)', r.tx.form === 'gum');
 check('gum is 4 mg (first use within 5 minutes)', r.tx.gumMg === 4);
 check('quit day is in the future', r.future === true);
 check('low confidence → suggest a clinic', r.refer === true);
 
 const text = reportHTML(a).replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ');
 [
-  'قبل يوم الإقلاع', 'مقياس Penn State', 'لزقة + علكة', 'الأسبوع 1–6', 'اشتري العلاج البديل',
+  'قبل يوم الإقلاع', 'مقياس Penn State', 'علكة نيكوتين', 'مش متوفرة حالياً بالأردن', 'الأسبوع 1–6', 'اشتري العلاج البديل',
   'ثقتك قليلة', 'بنصحك تزور عيادة إقلاع', 'بالملل', 'عالتلفون', 'بالسهر', '2.00',
 ].forEach((k) => check(`report mentions «${k}»`, text.includes(k)));
 check('no "undefined" or "NaN" anywhere', !/undefined|NaN/.test(text));

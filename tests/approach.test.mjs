@@ -64,9 +64,11 @@ eq('varenicline starts a week before the quit day', vare.meds.some((m) => m.incl
 const vareLong = buildReport({ ...base, rx: 'varenicline', approach: 'gradual-long' }, START);
 eq('varenicline with the 12-week plan: 24 weeks in total', vareLong.meds.some((m) => m.includes('24 أسبوع')), true);
 eq('gradual plan sets its own quit day', new Date(vareLong.quitAt).toDateString(), new Date(gradualQuitAt('gradual-long', START)).toDateString());
-const patchPlan = buildReport({ ...base, nrt_pref: 'both', approach: 'gradual-short' }, START);
-eq('patch preloading before the quit day', patchPlan.meds.some((m) => m.includes('تحميل مسبق')), true);
-eq('gum between cigarettes while cutting down', patchPlan.meds.some((m) => m.includes('بين السجاير')), true);
+const gumPlan = buildReport({ ...base, nrt_pref: 'both', approach: 'gradual-short' }, START);
+eq('no patch preloading: patches are not sold in Jordan', gumPlan.meds.some((m) => m.includes('تحميل مسبق')), false);
+eq('gum between cigarettes while cutting down', gumPlan.meds.some((m) => m.includes('بين السجاير')), true);
+const ownPatches = buildReport({ ...base, nrt_now: 'patch', patch_mg: 21, approach: 'gradual-short' }, START);
+eq('someone who already has patches still gets the preloading advice', ownPatches.meds.some((m) => m.includes('تحميل مسبق')), true);
 
 console.log(fails ? `\n${fails} FAILED` : '\nALL PASSED');
 process.exit(fails ? 1 : 0);

@@ -131,7 +131,7 @@ const SECTIONS = [
   },
   {
     title: 'العلاج البديل',
-    sub: 'اللزقات والعلكة بيعطوك نيكوتين بدون دخان، وبيخففوا الانسحاب.',
+    sub: 'علكة النيكوتين بتعطيك نيكوتين بدون دخان، وبتخفف الانسحاب. (اللزقات مش متوفرة حالياً بالأردن.)',
     items: [
       { type: 'choice', id: 'rx', label: 'الدكتور كاتبلك دواء للترك؟', hint: 'أدوية بوصفة طبية.', req: true, options: [['none', 'لا'], ['varenicline', 'فارينكلين (شامبكس)'], ['cytisine', 'سيتيسين'], ['bupropion', 'بوبروبيون (زايبان)']] },
       { type: 'choice', id: 'nrt_now', label: 'بتستعمل هلأ علكة أو لزقات نيكوتين؟', req: true, options: [['none', 'لا'], ['gum', 'علكة'], ['patch', 'لزقات'], ['both', 'الاتنين']] },
@@ -146,7 +146,7 @@ const SECTIONS = [
         { type: 'num', id: 'patch_price', label: 'سعر العلبة (د.أ)', step: 0.25, value: 12 },
         { type: 'num', id: 'patch_count', label: 'كم لزقة بالعلبة', step: 1, value: 7 },
       ] },
-      { type: 'choice', id: 'nrt_pref', label: 'شو بتحب تجرّب؟', req: true, when: (a) => a.nrt_now === 'none' && (!a.rx || a.rx === 'none'), options: [['advise', 'انصحني إنت'], ['patch', 'لزقات'], ['gum', 'علكة'], ['both', 'الاتنين سوا'], ['none', 'بدون علاج']] },
+      { type: 'choice', id: 'nrt_pref', label: 'شو بتحب تجرّب؟', req: true, when: (a) => a.nrt_now === 'none' && (!a.rx || a.rx === 'none'), options: [['advise', 'انصحني إنت'], ['gum', 'علكة'], ['none', 'بدون علاج']] },
     ],
   },
   {

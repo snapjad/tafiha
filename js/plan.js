@@ -89,6 +89,12 @@ function safety(a) {
 }
 
 // ---------------------------------------------------------------- treatment
+// Nicotine patches aren't sold in Jordan right now (not at pharmacies, not at the Ministry's quit
+// clinics), so no plan recommends them. Someone who already has patches keeps them: the app still
+// follows nrt_now = patch/both. Old answers with nrt_pref patch/both stay valid and become gum.
+export const PATCH_AVAILABLE = false;
+const PATCH_OUT = 'لزقات النيكوتين مش متوفرة حالياً بالأردن، لا بالصيدليات ولا بعيادات الإقلاع، فخطتك مبنية على علكة النيكوتين.';
+
 const GUM_ALONE = [
   { weeks: '1–6', text: 'حبة كل ساعة لساعتين (تقريباً 8–12 حبة باليوم)' },
   { weeks: '7–9', text: 'حبة كل ساعتين لـ 4 ساعات' },
@@ -122,10 +128,14 @@ function treatment(a, dep, safe) {
 
   if (form === 'advise') {
     if (dep.level <= 0) form = 'none';
-    else if (socialOnly) form = 'gum';
+    else if (socialOnly || !PATCH_AVAILABLE) form = 'gum';
     else if (dep.level >= 2) form = 'both';
     else form = heavy ? 'patch' : 'gum';
   }
+  // asked for patches, or the advice would have used them: gum, with the reason
+  const wantedPatch = !usingNrt && (form === 'patch' || form === 'both' || (a.nrt_pref === 'advise' && dep.level >= 1 && !socialOnly && (heavy || dep.level >= 2)));
+  if (!PATCH_AVAILABLE && !usingNrt && (form === 'patch' || form === 'both')) form = 'gum';
+  if (!PATCH_AVAILABLE && wantedPatch) notes.push(PATCH_OUT);
   if (form !== 'none' && socialOnly && form !== 'gum') {
     notes.push('بما إنك ما بتشرب أرجيلة كل يوم، اللزقة اليومية مش ضرورية. العلكة وقت الرغبة بتكفي.');
     form = 'gum';
@@ -134,14 +144,24 @@ function treatment(a, dep, safe) {
     notes.push('بدّلنا اللزقة بالعلكة بسبب حالة الجلد.');
     form = 'gum';
   }
+  let noFit = false;
   if (safe.noGum && (form === 'gum' || form === 'both')) {
-    notes.push('بدّلنا العلكة باللزقة بسبب الأسنان أو الفك. في كمان حبوب مص (lozenges) إذا توفرت.');
-    form = 'patch';
+    if (PATCH_AVAILABLE || a.nrt_now === 'patch' || a.nrt_now === 'both') {
+      notes.push('بدّلنا العلكة باللزقة بسبب الأسنان أو الفك. في كمان حبوب مص (lozenges) إذا توفرت.');
+      form = 'patch';
+    } else {
+      notes.push('العلكة مش مناسبة مع طقم الأسنان أو مشاكل الفك، واللزقات مش متوفرة حالياً. اسأل عيادة الإقلاع أو الصيدلي عن حبوب المص أو أدوية الإقلاع اللي بوصفة طبية.');
+      form = 'none';
+      noFit = true;
+    }
   }
-  if (dep.level >= 3 && (form === 'gum' || form === 'patch')) {
+  if (dep.level >= 3 && form === 'patch') {
     notes.push('اعتمادك عالي، والجمع بين لزقة وعلكة أقوى من نوع واحد. فكّر فيها.');
   }
-  if (form === 'none' && dep.level >= 1) {
+  if (dep.level >= 3 && form === 'gum') {
+    notes.push('اعتمادك عالي: التزم بجدول العلكة كامل ولا تقصّر بعدد الحبات، واسأل عيادة الإقلاع عن الأدوية اللي بوصفة طبية، لأنها بتساعد أكتر مع الاعتماد العالي.');
+  }
+  if (form === 'none' && dep.level >= 1 && !noFit) {
     notes.push('اخترت بدون علاج. تمام، بس العلاج البديل بيرفع فرصة النجاح بشكل واضح، والخيار موجود أي وقت.');
   }
 
@@ -157,7 +177,7 @@ function treatment(a, dep, safe) {
 export const TRIGGERS = [
   { id: 'coffee', label: 'مع القهوة أو الشاي', plan: 'اشرب قهوتك بمكان جديد، وامسك الكاسة بالإيد اللي كنت تمسك فيها السيجارة، وخلّي جنبك مي.' },
   { id: 'meal', label: 'بعد الأكل', plan: 'قوم عن السفرة فوراً، اغسل سنانك أو امضغ علكة، وتمشّى 5 دقايق.' },
-  { id: 'wake', label: 'أول ما أصحى', plan: 'اشرب كاسة مي قبل ما تقوم، غيّر ترتيب الصبح، وإذا عندك لزقة حطها أول إشي.' },
+  { id: 'wake', label: 'أول ما أصحى', plan: 'اشرب كاسة مي قبل ما تقوم، غيّر ترتيب الصبح، وإذا بتستعمل علكة خلّيها جنب تختك.' },
   { id: 'friends', label: 'مع الأصحاب', plan: 'خبّرهم إنك تارك قبل ما تطلع، اقعد بعيد عن اللي بيدخّنوا، وخلّي معك علكة.' },
   { id: 'stress', label: 'بالتوتر والضغط', plan: 'التدخين بريّح أعراض الانسحاب بس، مش التوتر نفسه. اضغط «عندي رغبة» وخذ 4 أنفاس عميقة.' },
   { id: 'bored', label: 'بالملل', plan: 'جهّز قائمة أشياء بتاخد 5 دقايق: مشي، رسالة لحدا، دوش، لعبة.' },
