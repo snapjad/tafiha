@@ -6,7 +6,11 @@ import { SUPABASE_URL, SUPABASE_ANON } from './config.js';
 const LS = 'tafiha.counted';
 const today = () => new Date().toLocaleDateString('en-CA', { timeZone: 'Asia/Amman' });
 
+// only the real site counts: local previews and tests stay out of the numbers
+const LIVE = typeof location !== 'undefined' && /^(www\.)?tafiha\.com$/.test(location.hostname);
+
 export function count(step) {
+  if (!LIVE) return;
   try {
     const seen = JSON.parse(localStorage.getItem(LS) || '{}');
     if (seen[step] === today()) return;
