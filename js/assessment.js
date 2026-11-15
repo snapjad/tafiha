@@ -30,7 +30,6 @@ const SECTIONS = [
     sub: 'اختار كل اللي بتستعمله، ومن أرقامك بنحسب اعتمادك وتكلفتك.',
     items: [
       { type: 'multi', id: 'products', req: true, cards: true, options: [['cig', 'سجاير', 'باكيت وسيجارة'], ['vape', 'فيب', 'ديسبوزبل، بودات أو ليكويد'], ['argileh', 'أرجيلة', 'راس وقعدة']] },
-      { type: 'choice', id: 'years', label: 'من قديش بتدخّن؟', req: true, options: [['<1', 'أقل من سنة'], ['1-5', '1–5 سنين'], ['6-10', '6–10'], ['11-20', '11–20'], ['20+', 'أكتر من 20']] },
       { type: 'group', title: 'السجاير', when: has('products', 'cig'), items: [
         { type: 'num', id: 'cig_perDay', label: 'كم سيجارة باليوم؟', step: 1, value: 20 },
         { type: 'num', id: 'cig_packPrice', label: 'سعر الباكيت (د.أ)', step: 0.05, value: 2.85 },
@@ -96,9 +95,6 @@ const SECTIONS = [
     sub: 'كل محاولة قبل بتعلّمنا شو بيصعب عليك.',
     items: [
       { type: 'choice', id: 'attempts', label: 'كم مرة حاولت تترك قبل؟', req: true, options: [['0', 'ولا مرة'], ['1-2', 'مرة أو مرتين'], ['3+', '3 أو أكتر']] },
-      { type: 'choice', id: 'longest', label: 'أطول مدة قدرت فيها؟', req: true, when: (a) => a.attempts && a.attempts !== '0', options: [['<1d', 'أقل من يوم'], ['1-7d', 'يوم لأسبوع'], ['1-4w', 'أسبوع لشهر'], ['1-6m', 'شهر لـ 6 شهور'], ['6m+', 'أكتر من 6 شهور']] },
-      { type: 'multi', id: 'methods', label: 'شو استعملت؟', when: (a) => a.attempts && a.attempts !== '0', options: [['will', 'إرادة بس'], ['gum', 'علكة'], ['patch', 'لزقات'], ['vape', 'فيب'], ['meds', 'أدوية من دكتور'], ['clinic', 'عيادة أو تطبيق']] },
-      { type: 'multi', id: 'relapse', label: 'شو رجّعك؟', when: (a) => a.attempts && a.attempts !== '0', options: [['craving', 'الرغبة القوية'], ['stress', 'التوتر والضغط'], ['friends', 'الأصحاب والسهرات'], ['habit', 'القهوة والعادات'], ['weight', 'زيادة الوزن'], ['mood', 'العصبية والمزاج'], ['unknown', 'ما بعرف']] },
       { type: 'multi', id: 'withdrawal', label: 'شو الأعراض اللي حسّيت فيها؟', when: (a) => a.attempts && a.attempts !== '0', options: WITHDRAWAL.map((w) => [w.id, w.label]) },
     ],
   },
