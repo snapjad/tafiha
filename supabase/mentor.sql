@@ -15,7 +15,9 @@ create table if not exists public.tafiha_mentor_usage (
 alter table public.tafiha_mentor_usage enable row level security;
 revoke all on public.tafiha_mentor_usage from public, anon, authenticated;
 
--- true when this call fits: 300 calls an hour per address (an interview is about 40 turns, each understood and spoken), 40000 a day in all
+-- true when this call fits: 120 calls an hour per address (an interview is about 40 turns, each understood and
+-- spoken: ~80 calls), 3000 a day in all. Raise «everyone» with the traffic, and keep a monthly spend limit
+-- on the Anthropic and Azure accounts as the last line.
 drop function if exists public.tafiha_mentor_take(text);
 create function public.tafiha_mentor_take(caller text) returns boolean
 language plpgsql security definer set search_path = ''
@@ -30,7 +32,7 @@ begin
   if random() < 0.01 then
     delete from public.tafiha_mentor_usage where slot < now() - interval '2 days';
   end if;
-  return mine <= 300 and everyone <= 40000;
+  return mine <= 120 and everyone <= 3000;
 end $$;
 
 revoke all on function public.tafiha_mentor_take(text) from public, anon, authenticated;

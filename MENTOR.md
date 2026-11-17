@@ -11,7 +11,7 @@ People answer by voice, by typing, or by tapping an answer.
 | Listening (free, the phone's own) | `js/voice.js`: Capacitor `SpeechRecognition` in the app, Web Speech in browsers |
 | His mind (Claude) and his voice (Azure, `ar-JO-TaimNeural`) | `supabase/functions/mentor/` (Edge Function): `{q, text, history}` → reply; `{say}` → mp3 |
 | What the guide may say | `supabase/functions/mentor/knowledge.json`, made by `node scripts/mentor-knowledge.mjs` from `js/plan.js` and `js/store.js` |
-| Cost ceilings | `supabase/mentor.sql` (300 calls an hour per address, 40,000 a day in all) |
+| Cost ceilings | `supabase/mentor.sql` (120 calls an hour per address, 3,000 a day in all; raise with traffic) |
 
 ## How it stays on topic
 
