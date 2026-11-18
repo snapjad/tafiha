@@ -19,6 +19,7 @@ import { CLINICS, SOURCE as CLINICS_SOURCE, clinicCount, mapLink } from './clini
 import { GUIDE, SOURCES as GUIDE_SOURCES } from './guide.js';
 import { sparkAt, loadSpark, saveSpark } from './sparks.js';
 import * as Track from './track.js';
+import { client as sbClient } from './sb.js';
 import { renderInstall } from './install.js';
 
 const $ = (sel, root = document) => root.querySelector(sel);
@@ -946,9 +947,30 @@ const REMIND_KINDS = [
   ['news', 'أخبار طفّيها', 'إعلانات قليلة من فريق طفّيها'],
 ];
 
+// reminder emails on the days that matter (supabase/mail.sql); the server keeps the choice
+async function renderMailSwitch(box) {
+  box.insertAdjacentHTML('beforeend', `<div class="remind-list"><label class="remind"><span><b>إيميلات التذكير</b><small>قبل يوم الإقلاع بيوم، ويومها، وبعد 3 أيام وأسبوع وشهر</small></span>
+    <input type="checkbox" data-mail disabled><i aria-hidden="true"></i></label></div>`);
+  const input = box.querySelector('[data-mail]');
+  const call = async (want) => {
+    const c = await sbClient();
+    const { data, error } = await c.rpc('tafiha_me_mail', { want });
+    if (error) throw error;
+    return data === true;
+  };
+  try { input.checked = await call(null); input.disabled = false; } catch { input.closest('.remind').hidden = true; return; }
+  input.onchange = async () => {
+    input.disabled = true;
+    try { input.checked = await call(input.checked); toast(input.checked ? 'رح نذكّرك بالإيميل بالأيام المهمة.' : 'وقّفنا إيميلات التذكير.'); }
+    catch { input.checked = !input.checked; toast('ما زبط. تأكد من النت وجرّب كمان مرة.'); }
+    input.disabled = false;
+  };
+}
+
 async function renderReminders(box) {
+  if (currentUser) renderMailSwitch(box);
   if (!Notify.native()) {
-    box.insertAdjacentHTML('beforeend', '<p class="card-sub">التذكيرات بتشتغل بتطبيق طفّيها على الموبايل.</p>');
+    box.insertAdjacentHTML('beforeend', '<p class="card-sub">تذكيرات أوقات الخطر والإنجازات بتشتغل بتطبيق طفّيها على الموبايل.</p>');
     return;
   }
   const allowed = await Notify.permission() === 'granted';
