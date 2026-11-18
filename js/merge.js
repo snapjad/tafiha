@@ -17,7 +17,7 @@ const CONFIG = {
   nrt: (s) => (s.nrt ? strip(s.nrt) : null),
   patch: (s) => (s.patch ? strip(s.patch) : null),
 };
-const NUMS = ['nrt.logs', 'nrt.packs', 'patch.logs', 'patch.packs', 'smokes'];
+const NUMS = ['nrt.logs', 'nrt.packs', 'patch.logs', 'patch.packs', 'smokes', 'checkins'];
 const OBJS = ['cravings', 'slips', 'deposits', 'tobaccoExpenses'];
 
 // Equal as saved JSON: Postgres JSONB can reorder object keys, and saving drops

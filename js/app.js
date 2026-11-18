@@ -19,6 +19,7 @@ import { CLINICS, SOURCE as CLINICS_SOURCE, clinicCount, mapLink } from './clini
 import { GUIDE, SOURCES as GUIDE_SOURCES } from './guide.js';
 import { sparkAt, loadSpark, saveSpark } from './sparks.js';
 import * as Track from './track.js';
+import { renderInstall } from './install.js';
 
 const $ = (sel, root = document) => root.querySelector(sel);
 const RM = matchMedia('(prefers-reduced-motion: reduce)').matches;
@@ -590,13 +591,56 @@ function renderPlan() {
   $('#planBtn').textContent = 'افتح التقرير';
 }
 
+// the steps before the quit day; the number is how many days before it each one is due
 const PREP = [
-  ['buy', 'اشتري العلاج البديل وخلّيه جاهز'],
-  ['tell', 'خبّر 2–3 ناس قريبين منك إنك رح تترك'],
-  ['clean', 'ليلة الترك: شيل السجاير والولاعات والطفّايات والفيب'],
-  ['plan', 'اقرأ خطتك للحظات الصعبة بالتقرير'],
-  ['first', 'قرر شو رح تعمل أول ساعة بيوم الإقلاع'],
+  ['notice', 'لاحظ سجايرك اليوم: إيمتى بتدخّن ومع شو', 5],
+  ['delay', 'أجّل أول سيجارة الصبح ربع ساعة', 4],
+  ['buy', 'اشتري العلاج البديل وخلّيه جاهز', 3],
+  ['tell', 'خبّر 2–3 ناس قريبين منك إنك رح تترك', 2],
+  ['plan', 'اقرأ خطتك للحظات الصعبة بالتقرير', 2],
+  ['clean', 'ليلة الترك: شيل السجاير والولاعات والطفّايات والفيب', 1],
+  ['first', 'قرر شو رح تعمل أول ساعة بيوم الإقلاع', 1],
 ];
+
+// «يومين ورا بعض», «3 أيام ورا بعض», «11 يوم ورا بعض»
+const runText = (n) => (n === 2 ? 'يومين ورا بعض' : `${n} ${S.word(n, 'يوم', 'أيام')} ورا بعض`);
+
+// after the quit day: one tap a day, a run of days, the last week at a glance
+function renderCheckin() {
+  const card = $('#checkinCard');
+  if (!card) return;
+  const now = Date.now();
+  card.hidden = isPrep();
+  if (isPrep()) return;
+  const today = S.startOfDay(now);
+  const done = S.checkedToday(state, now);
+  const slipped = S.slipOn(state, today);
+  const streak = S.checkinStreak(state, now);
+  const set = new Set(S.checkins(state));
+  const first = S.startOfDay(state.quitAt);
+  const days = Array.from({ length: 7 }, (_, i) => S.startOfDay(today - (6 - i) * S.DAY + S.DAY / 2));
+  $('#checkinWeek').innerHTML = days.map((d) => {
+    const before = d < first;
+    const st = before ? 'off' : S.slipOn(state, d) ? 'slip' : set.has(d) ? 'ok' : d === today ? 'now' : 'gap';
+    const name = S.DAY_NAMES[new Date(d).getDay()];
+    const label = { off: 'قبل الإقلاع', slip: 'دخّنت', ok: 'ما دخّنت', now: 'اليوم', gap: 'ما سجّلت' }[st];
+    return `<li class="ck-${st}" aria-label="${name}: ${label}"><i>${st === 'ok' ? '<svg class="ico"><use href="#i-check"/></svg>' : ''}</i><span>${d === today ? 'اليوم' : name}</span></li>`;
+  }).join('');
+  const badge = $('#checkinStreak');
+  badge.hidden = streak < 2;
+  badge.textContent = runText(streak);
+  const actions = $('#checkinActions');
+  if (slipped) {
+    actions.innerHTML = '';
+    $('#checkinNote').textContent = 'سجّلت زلّة اليوم. عادي، المهم ما توقف. بكرا يوم جديد.';
+  } else if (done) {
+    actions.innerHTML = '<button type="button" class="btn btn-soft" data-ck="smoked">دخّنت بعدها</button>';
+    $('#checkinNote').textContent = streak >= 2 ? `برافو. ${runText(streak)} بدون دخان، ارجع سجّل بكرا.` : 'برافو. ارجع سجّل بكرا، وخلّي السلسلة تكبر.';
+  } else {
+    actions.innerHTML = '<button type="button" class="btn btn-red" data-ck="clean"><svg class="ico" aria-hidden="true"><use href="#i-check"/></svg>ما دخّنت اليوم</button><button type="button" class="btn btn-soft" data-ck="smoked">دخّنت</button>';
+    $('#checkinNote').textContent = 'كبسة وحدة كل يوم، وبتشوف أيامك بتتجمّع.';
+  }
+}
 
 function renderPrep() {
   const card = $('#prepCard');
@@ -607,6 +651,16 @@ function renderPrep() {
   state.prep = state.prep || {};
   const done = items.filter(([id]) => state.prep[id]).length;
   $('#prepCount').textContent = `${done} من ${items.length}`;
+  // the countdown, and the one thing to do today: the first open step that's due (or the next one)
+  // calendar days to the quit day (tomorrow = 1), so the task changes in the morning, not at a random hour
+  const left = Math.max(0, Math.round((S.startOfDay(state.quitAt) - S.startOfDay(Date.now())) / S.DAY));
+  const open = items.filter(([id]) => !state.prep[id]);
+  const today = open.find(([, , due]) => due >= left) || open[0];
+  const box = $('#prepToday');
+  if (box) {
+    box.hidden = !today;
+    if (today) box.innerHTML = `<span class="pt-k">${left <= 1 ? (left === 1 ? 'مهمة اليوم · يوم الإقلاع بكرا' : 'مهمة اليوم · اليوم يومك') : 'مهمة اليوم'}</span><p>${today[1]}</p><button type="button" class="btn btn-red" data-prep="${today[0]}"><svg class="ico" aria-hidden="true"><use href="#i-check"/></svg>عملتها</button>`;
+  }
   $('#prepList').innerHTML = items.map(([id, label]) =>
     `<button type="button" data-prep="${id}" aria-pressed="${!!state.prep[id]}"><span class="box"><svg class="ico"><use href="#i-check"/></svg></span><span>${label}</span></button>`).join('');
 }
@@ -806,6 +860,8 @@ function renderAll() {
   renderPlan();
   renderPatch();
   renderPrep();
+  renderCheckin();
+  renderInstall($('#installCard'), { native: Notify.native() });
   renderToday();
   renderCut();
   renderApproach();
@@ -1309,6 +1365,7 @@ async function openAccount() {
 // The interview answers wait here while the person makes an account, so they
 // survive the trip to Google and back, or closing the app on the sign-up screen.
 const PENDING = 'tafiha.pending';
+const PENDING_SEEN = 'tafiha.pending-seen';
 function loadPending() {
   try {
     const a = JSON.parse(localStorage.getItem(PENDING) || 'null');
@@ -1343,7 +1400,13 @@ async function welcome(error) {
       }
       if (r.__home) { intro = true; continue; }
       if (r.__login) mode = 'login';
-      else { answers = r; savePending(answers); mode = 'gate'; Track.count('done'); }
+      else {
+        answers = r; savePending(answers); mode = 'gate'; Track.count('done');
+        // the plan first: the person sees and can download it, then saves it with an account
+        document.body.classList.remove('booting');
+        await openReport(answers, { first: true, save: true });
+        try { localStorage.setItem(PENDING_SEEN, '1'); } catch { /* shown again after signing up */ }
+      }
     }
     const result = await Auth.runAuth({ mode, name: answers?.name, error, onRedirect: () => answers && savePending(answers) });
     error = '';
@@ -1428,7 +1491,10 @@ async function boot() {
     persist();
     clearPending();
     document.body.classList.remove('booting');
-    await openReport(answers, { first: true });
+    // already seen before signing up: straight to the journey
+    let seen = false;
+    try { seen = localStorage.getItem(PENDING_SEEN) === '1'; localStorage.removeItem(PENDING_SEEN); } catch { /* show it */ }
+    if (!seen) await openReport(answers, { first: true });
   } else if (!state) await intake(null);
   document.body.classList.remove('booting');
   start();
@@ -1538,6 +1604,24 @@ function start() {
   if ($('#guideBtn')) $('#guideBtn').onclick = () => openGuide();
   initSparks();
   $('#planBtn').onclick = () => (state.assessment ? openReport(state.assessment) : intake(state));
+  $('#checkinActions')?.addEventListener('click', (ev) => {
+    const b = ev.target.closest('[data-ck]');
+    if (!b) return;
+    if (b.dataset.ck === 'smoked') { openSlip(); return; }
+    S.checkIn(state);
+    persist();
+    renderCheckin();
+    toast('انسجل يومك.', 'تراجع', () => { S.undoCheckIn(state); persist(); renderCheckin(); });
+  });
+  $('#prepToday')?.addEventListener('click', (ev) => {
+    const b = ev.target.closest('[data-prep]');
+    if (!b) return;
+    state.prep = state.prep || {};
+    state.prep[b.dataset.prep] = true;
+    persist();
+    renderPrep();
+    toast('برافو، خطوة لقدّام.');
+  });
   $('#prepList').addEventListener('click', (ev) => {
     const b = ev.target.closest('[data-prep]');
     if (!b) return;

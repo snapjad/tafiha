@@ -155,7 +155,7 @@ const SECTIONS = [
       { type: 'choice', id: 'approach', label: 'كيف بدك تتركها؟', hint: 'حسب الأبحاث، الترك مرة وحدة نتيجته أعلى أو مساوية للتدريجي.', req: true, cards: true,
         when: (a) => a.quitMode === 'future' && a.rx !== 'cytisine',
         options: [['abrupt', 'مرة وحدة بيوم محدد', 'بتختار موعد قريب وبتوقف فيه'], ['gradual-short', 'تخفيف سريع للسجائر', 'خيار أسبوعين: نص الكمية، بعدين ربعها، وبعدها إقلاع'], ['gradual-long', 'مسار الفارينكلين مع الطبيب', 'خيار حتى 12 أسبوع للسجائر مع الدواء الموصوف، مش مدة إلزامية'], ['advise', 'انصحني']] },
-      { type: 'date', id: 'futureDate', label: 'يوم الإقلاع', hint: 'اختار موعد واقعي قريب. مدة استخدام البدائل بعده مختلفة عن موعد الإقلاع.', when: (a) => a.quitMode === 'future' && chooseApproach(a) === 'abrupt', future: true },
+      { type: 'date', id: 'futureDate', label: 'يوم الإقلاع', hint: 'كل ما كان اليوم أقرب، كان أسهل. اختار يوم خلال أسبوعين، والأحسن خلال أسبوع.', when: (a) => a.quitMode === 'future' && chooseApproach(a) === 'abrupt', future: true },
     ],
   },
 ];
@@ -180,6 +180,9 @@ export function everyQuestion() {
 // to quit always get asked outright, because the plan's safety depends on them.
 export const ASK_OUTRIGHT = new Set(['age', 'pregnancy', 'conditions', 'meds', 'rx', 'nrt_now', 'gum_mg', 'gum_max',
   'patch_mg', 'nrt_pref', 'quitMode', 'when', 'pastDate', 'futureDate', 'approach']);
+
+// a quit day further than this cools off (most who picked a month away never came back)
+const QUIT_MAX_DAYS = 14;
 
 export function buildSteps(a) {
   const steps = [{ key: 'intro', intro: true }];
@@ -225,9 +228,15 @@ function control(step, a) {
   if (step.nums) return `<div class="steppers">${step.items.map((x) => stepper(x, a)).join('')}</div>`;
   if (it.type === 'date') {
     const now = Date.now();
-    const def = it.future ? (() => { const d = new Date(now + 7 * 864e5); d.setHours(8, 0, 0, 0); return d.getTime(); })() : now;
-    const lim = it.future ? `min="${toLocalInput(now)}" max="${toLocalInput(now + 60 * 864e5)}"` : `max="${toLocalInput(now)}"`;
-    return `<input class="big-input" type="datetime-local" name="${it.id}" value="${toLocalInput(a[it.id] || def)}" ${lim}>`;
+    const morning = (days) => { const d = new Date(now + days * 864e5); d.setHours(8, 0, 0, 0); return d.getTime(); };
+    const def = it.future ? morning(3) : now;
+    const lim = it.future ? `min="${toLocalInput(now)}" max="${toLocalInput(now + QUIT_MAX_DAYS * 864e5)}"` : `max="${toLocalInput(now)}"`;
+    const input = `<input class="big-input" type="datetime-local" name="${it.id}" value="${toLocalInput(a[it.id] || def)}" ${lim}>`;
+    if (!it.future) return input;
+    // quick picks: tomorrow, in three days, in a week (the morning, 8:00)
+    const picks = [[1, 'بكرا'], [3, 'بعد 3 أيام'], [7, 'بعد أسبوع']];
+    const chosen = a[it.id] || def;
+    return `<div class="quick-days" role="group" aria-label="اختيار سريع">${picks.map(([d, l]) => `<button type="button" data-quick="${toLocalInput(morning(d))}" aria-pressed="${toLocalInput(morning(d)) === toLocalInput(chosen)}">${l}</button>`).join('')}</div>${input}`;
   }
   if (it.type === 'scale') {
     return `<div class="q-scale">${Array.from({ length: 11 }, (_, i) => `<button type="button" data-q="${it.id}" data-v="${i}" aria-pressed="${a[it.id] === i}" style="--v:${i}">${i}</button>`).join('')}</div>
@@ -341,6 +350,7 @@ export function runAssessment(prev = {}, opts = {}) {
         if (it.type === 'num' && !(a[it.id] > 0)) return `«${it.label}» لازم يكون أكبر من صفر.`;
         if (it.type === 'date' && !Number.isFinite(a[it.id])) return 'اختار التاريخ.';
         if (it.type === 'date' && it.future && a[it.id] <= Date.now()) return 'يوم الإقلاع لازم يكون بالمستقبل.';
+        if (it.type === 'date' && it.future && a[it.id] > Date.now() + QUIT_MAX_DAYS * 864e5) return 'اختار يوم خلال أسبوعين. اليوم البعيد بيخلّي الحماس يبرد.';
         if (!it.req) continue;
         if ((it.type === 'choice' || it.type === 'scale') && a[it.id] === undefined) return 'اختار جواب.';
         if (it.type === 'multi' && (!Array.isArray(a[it.id]) || (!it.none && !a[it.id].length))) return 'اختار شي واحد على الأقل.';
@@ -361,6 +371,14 @@ export function runAssessment(prev = {}, opts = {}) {
 
     function wire(el, step, last) {
       el.addEventListener('click', (ev) => {
+        const q = ev.target.closest('[data-quick]');
+        if (q) {
+          const inp = el.querySelector('input[type=datetime-local]');
+          inp.value = q.dataset.quick;
+          q.parentElement.querySelectorAll('button').forEach((x) => x.setAttribute('aria-pressed', String(x === q)));
+          el.querySelector('.onb-err').textContent = '';
+          return;
+        }
         const st = ev.target.closest('.st-btn');
         if (st) {
           const box = st.closest('.stepper');

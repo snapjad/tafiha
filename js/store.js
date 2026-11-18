@@ -86,6 +86,7 @@ export function createState(a = {}) {
     },
     cravings: [],
     slips: [],
+    checkins: [],
     deposits: [],
     tobaccoExpenses: [],
     savingsCarryCents: 0,
@@ -398,4 +399,31 @@ export function fmtMoney(v) {
 
 export function fmtInt(v) {
   return Math.floor(v).toLocaleString('en-US');
+}
+
+// ---------------------------------------------------------------- daily check-in
+// checkins: the start of each day the person said «ما دخّنت». A day with a slip doesn't count.
+export const checkins = (s) => (Array.isArray(s.checkins) ? s.checkins : []);
+export const checkedToday = (s, now = Date.now()) => checkins(s).includes(startOfDay(now));
+export function slipOn(s, day) {
+  const end = day + DAY;
+  return slipsNow(s).some((x) => x.at >= day && x.at < end);
+}
+export function checkIn(s, now = Date.now()) {
+  const day = startOfDay(now);
+  s.checkins = checkins(s).filter((d) => d !== day).concat(day).sort((x, y) => x - y);
+}
+export function undoCheckIn(s, now = Date.now()) {
+  const day = startOfDay(now);
+  s.checkins = checkins(s).filter((d) => d !== day);
+}
+// days in a row ending today (or yesterday, before today's is in), since the quit day
+export function checkinStreak(s, now = Date.now()) {
+  const set = new Set(checkins(s));
+  const first = startOfDay(s.quitAt);
+  let day = startOfDay(now);
+  if (!set.has(day)) day = startOfDay(day - DAY / 2);
+  let n = 0;
+  while (day >= first && set.has(day) && !slipOn(s, day)) { n++; day = startOfDay(day - DAY / 2); }
+  return n;
 }

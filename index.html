@@ -148,8 +148,22 @@
               <span class="spacer"></span>
               <span class="badge" id="prepCount"></span>
             </div>
-            <div class="checks" id="prepList"></div>
+            <div class="prep-today" id="prepToday" hidden></div>
+            <details class="prep-all"><summary>كل الخطوات</summary><div class="checks" id="prepList"></div></details>
           </section>
+
+          <section class="card checkin" style="--i:1" id="checkinCard" aria-labelledby="checkinTitle" hidden>
+            <div class="card-head">
+              <h2 class="card-title" id="checkinTitle">كيف كان يومك؟</h2>
+              <span class="spacer"></span>
+              <span class="badge red" id="checkinStreak" hidden></span>
+            </div>
+            <ol class="ck-week" id="checkinWeek" aria-label="آخر 7 أيام"></ol>
+            <div class="ck-actions" id="checkinActions"></div>
+            <p class="card-sub ck-note" id="checkinNote"></p>
+          </section>
+
+          <section class="card install" style="--i:1" id="installCard" aria-labelledby="installTitle" hidden></section>
 
           <div class="tiles" id="stats">
             <section class="card tile" style="--i:2">

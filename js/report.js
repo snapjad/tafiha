@@ -468,7 +468,8 @@ export async function downloadPDF(a) {
   pdf.save(`tafiha-report-${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}.pdf`);
 }
 
-export function openReport(a, { first = false } = {}) {
+// first: the report right after making the plan. save: before there is an account (the button saves it).
+export function openReport(a, { first = false, save = false } = {}) {
   return new Promise((resolve) => {
     const root = document.createElement('div');
     root.className = 'report';
@@ -478,7 +479,7 @@ export function openReport(a, { first = false } = {}) {
     root.innerHTML = `
       <div class="rp-bar">
         <button class="btn btn-soft rp-pdf" type="button">نزّل خطتك</button>
-        <button class="btn ${first ? 'btn-red' : 'btn-ink'} rp-done" type="button">${first ? 'ابدأ الخطة' : 'سكّر'}</button>
+        <button class="btn ${first ? 'btn-red' : 'btn-ink'} rp-done" type="button">${save ? 'احفظ خطتي وابدأ' : first ? 'ابدأ الخطة' : 'سكّر'}</button>
       </div>
       <article class="rp-doc">${reportHTML(a)}</article>`;
     document.body.appendChild(root);

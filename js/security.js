@@ -74,6 +74,7 @@ export function assertState(s) {
   }
   if (s.patch?.steps != null) list(s.patch.steps, (v) => object(v) && number(v.mg) && number(v.weeks) && v.weeks >= 0 && v.weeks <= 104);
   if (s.smokes != null) list(s.smokes, number);
+  if (s.checkins != null) list(s.checkins, number);
   for (const key of ['cravings', 'slips']) {
     list(s[key], (v) => object(v) && number(v.at));
     for (const item of s[key]) {
