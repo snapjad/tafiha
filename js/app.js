@@ -1271,7 +1271,31 @@ function showPage(name) {
   cigarette?.setMode(name === 'home' ? heroMode() : 'off');
 }
 
-const syncOptions = () => ({ userId: currentUser?.id, getState: () => state, setState: applyRemote, onStatus: showSync });
+const syncOptions = () => ({ userId: currentUser?.id, getState: () => state, setState: applyRemote, onStatus: showSync, onGone: () => checkAccount() });
+
+// The account was deleted or stopped (from the admin area, or on another device): its copy on this
+// device goes too, the person is signed out, and the start screen says why.
+const GONE = 'tafiha.account-gone';
+async function accountGone() {
+  if (leavingAccount) return;
+  leavingAccount = true;
+  Sync.stop();
+  try {
+    if (currentUser) S.selectAccount(currentUser.id);
+    S.reset();
+    localStorage.removeItem(PENDING);
+    localStorage.removeItem(PENDING_SEEN);
+    sessionStorage.setItem(GONE, '1');
+  } catch { /* storage blocked: signing out still ends it */ }
+  if (Notify.native()) await Notify.cancelAll().catch(() => {});
+  await Auth.signOut('local').catch(() => { try { localStorage.removeItem('tafiha.auth'); } catch { /* ignore */ } });
+  location.reload();
+}
+// asked when the app opens and whenever it comes back to the front
+async function checkAccount() {
+  if (!currentUser || !navigator.onLine || leavingAccount) return;
+  if (await Auth.verify() === 'gone') accountGone();
+}
 
 function accountChoice(title, message, yes, no) {
   return new Promise((resolve) => {
@@ -1401,9 +1425,10 @@ function clearPending() { try { localStorage.removeItem(PENDING); } catch { /* i
 // «عندي حساب» on the first screen goes straight to signing in.
 // Before there's an account: the welcome screens (first launch, or the logo), the interview,
 // then an account to open the report. Answers already given are kept on the way.
-async function welcome(error) {
+// gone: the account was just deleted or stopped: straight to the account screen, which says so
+async function welcome(error, gone = false) {
   let answers = loadPending();
-  let mode = answers ? 'gate' : null;
+  let mode = answers ? 'gate' : gone ? 'login' : null;
   let intro = !answers && !error && !Onboarding.seen();
   for (;;) {
     if (intro) {
@@ -1474,14 +1499,17 @@ async function boot() {
       currentUser = result.user;
     }
     if (!currentUser) {
-      const linkError = callbackError || recovery ? 'الرابط ما اشتغل أو خلص وقته. سجّل دخول أو اطلب رسالة جديدة.' : '';
+      let gone = false;
+      try { gone = sessionStorage.getItem(GONE) === '1'; sessionStorage.removeItem(GONE); } catch { /* no message */ }
+      const linkError = gone ? 'حسابك انحذف أو انوقف، وانمسحت بياناته من هالجهاز. إذا بدك تكمّل، اعمل حساب جديد.'
+        : callbackError || recovery ? 'الرابط ما اشتغل أو خلص وقته. سجّل دخول أو اطلب رسالة جديدة.' : '';
       if (guest) {
         // a journey on this device from before accounts goes into the account;
         // without internet it keeps working here until the next open
         const result = await Auth.runAuth({ mode: 'required', name: guest.name, allowLocal: !navigator.onLine, error: linkError });
         currentUser = result?.user || null;
       } else {
-        currentUser = await welcome(linkError);
+        currentUser = await welcome(linkError, gone);
       }
     }
   }
@@ -1521,6 +1549,8 @@ async function boot() {
   document.body.classList.remove('booting');
   start();
   booted = true;
+  checkAccount();
+  document.addEventListener('visibilitychange', () => { if (!document.hidden) checkAccount(); });
 }
 
 function start() {

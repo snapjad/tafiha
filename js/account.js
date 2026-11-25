@@ -24,6 +24,19 @@ export async function session() {
   return data.session;
 }
 
+// Is the signed-in account still there? 'gone' = deleted or stopped by the team (the server says so);
+// 'unknown' = no answer (offline): keep going and ask again later.
+export async function verify() {
+  try {
+    const c = await client();
+    const { data, error } = await c.auth.getUser();
+    if (!error && data?.user) return 'ok';
+    const code = String(error?.code || '');
+    if ([401, 403, 404].includes(error?.status) || /user_not_found|user_banned|session_not_found|refresh_token_not_found|bad_jwt/.test(code)) return 'gone';
+    return 'unknown';
+  } catch { return 'unknown'; }
+}
+
 export async function onAuthChange(cb) {
   const c = await client();
   const { data } = c.auth.onAuthStateChange((event, s) => { setTimeout(() => cb(event, s), 0); });

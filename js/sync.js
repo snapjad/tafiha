@@ -118,6 +118,9 @@ async function refresh() {
   await pull();
 }
 
+// the database refuses every call once the account is deleted or stopped (its sessions are gone)
+const sessionGone = (e) => /session expired|not signed in/i.test(String(e?.message || ''));
+
 async function pull() {
   const run = generation;
   if (!sb || !userId) return false;
@@ -146,7 +149,8 @@ async function pull() {
     setStatus('ok');
     if (merged && (meta.legacyKey || !same(merged, data?.data))) schedule();
     return true;
-  } catch {
+  } catch (e) {
+    if (run === generation && sessionGone(e)) { api?.onGone?.(); return false; }
     if (run === generation) {
       ready = false;
       setStatus(navigator.onLine ? 'error' : 'offline');
@@ -199,7 +203,8 @@ async function push() {
       if (run !== generation) return false;
     }
     if (!saved) { setStatus('error'); schedule(30000); }
-  } catch {
+  } catch (e) {
+    if (run === generation && sessionGone(e)) { api?.onGone?.(); return; }
     if (run === generation) { setStatus(navigator.onLine ? 'error' : 'offline'); schedule(30000); }
   } finally {
     if (run === generation) {
