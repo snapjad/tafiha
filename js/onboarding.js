@@ -27,6 +27,7 @@ function markSeen() {
 // line icons drawn for this screen set, same style as the app's sprite (.ico)
 const ico = (body, cls = '') => `<svg class="ico ${cls}" viewBox="0 0 24 24" aria-hidden="true">${body}</svg>`;
 const I = {
+  check: ico('<path d="M5 12.5l4.5 4.5L19 7.5"/>'),
   next: ico('<use href="#i-arrow"/>'),
   back: ico('<use href="#i-arrow" transform="rotate(180 12 12)"/>'),
   timer: ico('<circle cx="12" cy="13" r="7.5"/><path d="M12 9.5V13l2.5 1.5M9.5 3h5"/>'),
@@ -45,6 +46,17 @@ const I = {
 const mark = (h, dark = true) => `<img class="intro-mark" src="assets/brand/tafiha-mark-transparent-${dark ? 'dark' : 'light'}.svg" alt="" width="${Math.round(h * 128 / 166)}" height="${h}">`;
 const step = (n, text, accent = false) => `<li><span class="intro-num${accent ? ' accent' : ''}">${n}</span><span>${text}</span></li>`;
 const tip = (icon, text) => `<li><span class="intro-tip-ico">${icon}</span><span>${text}</span></li>`;
+
+// the welcome: one screen, then the account (the interview comes right after signing up)
+function single() {
+  const hero = screens(false)[0];
+  return [{
+    ...hero, last: true,
+    title: 'أهلاً فيك بطفّيها',
+    sub: 'سجاير، فيب، أو أرجيلة؟ بنطفّيها سوا، ببلاش.',
+    points: ['خطة ترك على مقاسك بعد أسئلة سريعة', 'زر «عندي رغبة» للحظات الصعبة', 'عدّاد لأيامك والمصاري اللي وفّرتها'],
+  }];
+}
 
 function screens(consult) {
   const list = [
@@ -187,12 +199,13 @@ function pageHTML(s, i, list) {
           ${s.dark ? `<div class="intro-visual intro-depth">${s.body}</div>` : ''}
           <h1 class="intro-title" tabindex="-1">${s.title}</h1>
           <p class="intro-sub">${s.sub}</p>
+          ${s.points ? `<ul class="intro-points">${s.points.map((p) => `<li>${I.check}<span>${p}</span></li>`).join('')}</ul>` : ''}
           ${s.dark ? '' : `<div class="intro-body intro-depth">${s.body}</div>`}
         </div>
         <div class="intro-foot">
-          <div class="intro-dots" aria-hidden="true">${dots}</div>
+          ${list.length > 1 ? `<div class="intro-dots" aria-hidden="true">${dots}</div>` : ''}
           ${s.last
-            ? `<button class="intro-btn" type="button" data-start>ابدأ استشارتك</button>
+            ? `<button class="intro-btn" type="button" data-start>${list.length > 1 ? 'ابدأ استشارتك' : 'ابدأ ببلاش'}</button>
                <button class="intro-btn line" type="button" data-login>عندي حساب</button>
                <p class="intro-fine">بياناتك إلك. ما في إعلانات، وما منبيعها لحدا.</p>`
             : `<button class="intro-btn" type="button" data-next>التالي${I.next}</button>`}
@@ -201,9 +214,9 @@ function pageHTML(s, i, list) {
     </section>`;
 }
 
-export function run({ consult = false } = {}) {
+export function run({ consult = false, one = false } = {}) {
   return new Promise((resolve) => {
-    const list = screens(consult);
+    const list = one ? single() : screens(consult);
     const last = list.length - 1;
     let pos = 0;
     let width = 0;

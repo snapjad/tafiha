@@ -681,7 +681,9 @@ function answersFromState(s) {
 
 // the intake interview, then the report; keeps history when retaken
 async function intake(prev = null) {
+  if (!prev) Track.count('start');
   const a = await runAssessment(prev ? (prev.assessment || answersFromState(prev)) : { name: Auth.firstName(currentUser) });
+  if (!prev) Track.count('done');
   state = S.createFromAssessment(a, buildReport(a).tx, prev);
   persist();
   if (clockEls.d) renderAll();
@@ -1427,8 +1429,28 @@ function clearPending() { try { localStorage.removeItem(PENDING); } catch { /* i
 // then an account to open the report. Answers already given are kept on the way.
 // gone: the account was just deleted or stopped: straight to the account screen, which says so
 async function welcome(error, gone = false) {
-  let answers = loadPending();
+  // an interview finished before this flow (still waiting on this device) is saved with the account
+  const answers = loadPending();
   let mode = answers ? 'gate' : gone ? 'login' : null;
+  let intro = !answers && !error && !gone;
+  for (;;) {
+    if (intro) {
+      intro = false;
+      // one welcome screen, then the account; the interview starts right after signing up (boot → intake)
+      mode = await Onboarding.run({ one: true }) === 'login' ? 'login' : answers ? 'gate' : 'welcome';
+    }
+    const result = await Auth.runAuth({ mode: mode || 'welcome', name: answers?.name, error, onRedirect: () => answers && savePending(answers) });
+    error = '';
+    if (result?.user) return result.user;
+    if (result === 'home') { intro = true; continue; }
+    mode = answers ? 'gate' : 'welcome';
+  }
+}
+
+// the earlier flow (interview before the account), kept for the spoken guide when it's switched on
+async function welcomeInterviewFirst(error) {
+  let answers = loadPending();
+  let mode = answers ? 'gate' : null;
   let intro = !answers && !error && !Onboarding.seen();
   for (;;) {
     if (intro) {
