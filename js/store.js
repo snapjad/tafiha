@@ -155,10 +155,12 @@ export function createFromAssessment(a, tx, prev = null) {
     s.slips = prev.slips || [];
     s.goal = prev.goal || null;
     s.prep = prev.prep || {};
-    s.deposits = prev.deposits || [];
-    s.tobaccoExpenses = prev.tobaccoExpenses || [];
-    s.journeyAt = journeyStart(prev);
-    s.savingsCarryCents = prev.savingsCarryCents || 0;
+    // a later quit day is a new start: the money starts from zero, like restartJourney
+    const fresh = a.quitAt > prev.quitAt;
+    s.deposits = fresh ? [] : prev.deposits || [];
+    s.tobaccoExpenses = fresh ? [] : prev.tobaccoExpenses || [];
+    s.journeyAt = fresh ? s.journeyAt : journeyStart(prev);
+    s.savingsCarryCents = fresh ? 0 : prev.savingsCarryCents || 0;
     s._t = { ...prev._t };
     s._del = { ...prev._del };
   }
@@ -285,8 +287,12 @@ export function addDeposit(s, { cents, at = Date.now(), note = '' }, now = Date.
   return entry;
 }
 
+// a restart starts everything again from zero: the counter, the savings and the deposits
 export function restartJourney(s, now = Date.now()) {
-  s.journeyAt = journeyStart(s);
+  s.journeyAt = now;
+  s.savingsCarryCents = 0;
+  s.deposits = [];
+  s.tobaccoExpenses = [];
   s.slips.push({ at: now, reset: true });
   s.quitAt = now;
   if (s.assessment) s.assessment = { ...s.assessment, quitAt: now, quitMode: 'done', approach: 'abrupt' };

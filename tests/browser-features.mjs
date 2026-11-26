@@ -139,9 +139,10 @@ try {
   await page.locator('#slipReset').click();
   await page.locator('#slipReset').click();
   await page.locator('#sheet[hidden]').waitFor({ state: 'attached' });
-  assert.equal(savings(await stored(page), now).earnedCents, beforeReset.earnedCents);
-  assert.equal((await stored(page)).deposits.length, 1);
-  console.log('PASS complete craving flow, story image, slip and restart without losing savings');
+  assert.ok(beforeReset.earnedCents > 0);
+  assert.ok(savings(await stored(page), Date.now()).earnedCents < 5, 'Savings start again from zero');
+  assert.equal((await stored(page)).deposits.length, 0);
+  console.log('PASS complete craving flow, story image, slip and restart from zero');
 
   const future = structuredClone(initial);
   future.quitAt = now + 2 * DAY + 3 * 3600000 + 4 * 60000 + 5000;

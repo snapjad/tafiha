@@ -720,6 +720,81 @@ function logGum(btn) {
   });
 }
 
+// The gum on its own short sheet: the pieces logged today (each can be removed),
+// the packs, and the gum's settings. Nothing in it opens the keyboard by itself.
+function openGum() {
+  const n = state.nrt;
+  const timeAr = (t) => new Date(t).toLocaleTimeString('ar-JO-u-nu-latn', { hour: 'numeric', minute: '2-digit' });
+  const opt = (v) => `<option value="${v}" ${n.mg == v ? 'selected' : ''}>${v} ملغ</option>`;
+  const field = (label, name, value, step) =>
+    `<label class="field">${label}<input type="number" inputmode="decimal" min="0" step="${step}" name="${name}" value="${esc(value)}"></label>`;
+  openSheet(`
+    <h2>علكة النيكوتين</h2>
+    <p class="lead">سجّلت حبة بالغلط؟ شيلها من هون. وعدّل العلب والسعر براحتك.</p>
+    <form class="form gum-form" id="gumForm" novalidate>
+      <div class="toggles"><label><input type="checkbox" name="active" ${n.active ? 'checked' : ''}><span>بستعمل علكة</span></label></div>
+      <div class="habit-fields" data-h="gum" ${n.active ? '' : 'data-off'}>
+        <fieldset class="fs"><legend>حبات اليوم</legend><ul class="gum-logs" id="gumLogs"></ul></fieldset>
+        <fieldset class="fs"><legend>العلب</legend>
+          <p class="gum-stock" id="gumStockLine"></p>
+          <div class="gum-packs">
+            <button type="button" class="btn btn-soft" id="gumPackAdd">اشتريت علبة</button>
+            <button type="button" class="btn btn-line" id="gumPackDel">شيل علبة</button>
+          </div>
+        </fieldset>
+        <fieldset class="fs"><legend>العلكة اللي بتستعملها</legend>
+          <div class="row2"><label class="field">التركيز<select name="mg">${opt(2)}${opt(4)}</select></label>${field('الحد اليومي (من العلبة)', 'dailyMax', n.dailyMax, 1)}</div>
+          <div class="row2">${field('سعر العلبة (د.أ)', 'packPrice', n.packPrice, 0.25)}${field('كم حبة بالعلبة', 'packCount', n.packCount, 1)}</div>
+        </fieldset>
+      </div>
+      <div class="sheet-actions">
+        <button class="btn btn-red" type="submit">احفظ</button>
+        <button class="btn btn-soft" type="button" data-close>سكّر</button>
+      </div>
+    </form>`, (sheet) => {
+    const f = $('#gumForm', sheet);
+    const refresh = () => {
+      persist();
+      renderNRT();
+      renderStats();
+      renderToday();
+      const sod = S.startOfDay(Date.now());
+      const today = state.nrt.logs.map((t, i) => ({ t, i })).filter((x) => x.t >= sod).reverse();
+      $('#gumLogs', sheet).innerHTML = today.length
+        ? today.map((x) => `<li><span>حبة الساعة <bdi>${timeAr(x.t)}</bdi></span><button type="button" class="gum-del" data-t="${x.t}">شيلها</button></li>`).join('')
+        : '<li class="gum-empty">ما سجّلت ولا حبة اليوم.</li>';
+      $('#gumStockLine', sheet).textContent = state.nrt.packs.length
+        ? `العلب المسجّلة: ${state.nrt.packs.length} · المتبقي ${S.gumStock(state)} حبة`
+        : 'ما في علب مسجّلة.';
+      $('#gumPackDel', sheet).disabled = !state.nrt.packs.length;
+    };
+    $('#gumLogs', sheet).addEventListener('click', (ev) => {
+      const b = ev.target.closest('.gum-del');
+      if (!b) return;
+      const i = state.nrt.logs.lastIndexOf(Number(b.dataset.t));
+      if (i > -1) state.nrt.logs.splice(i, 1);
+      refresh();
+      toast('انشالت الحبة');
+    });
+    $('#gumPackAdd', sheet).onclick = () => { state.nrt.packs.push(Date.now()); refresh(); toast(`انضافت علبة. صار عندك ${S.gumStock(state)} حبة`); };
+    $('#gumPackDel', sheet).onclick = () => { state.nrt.packs.pop(); refresh(); toast('انشالت علبة'); };
+    f.elements.active.onchange = () => sheet.querySelector('[data-h="gum"]').toggleAttribute('data-off', !f.elements.active.checked);
+    f.addEventListener('submit', (ev) => {
+      ev.preventDefault();
+      Object.assign(n, {
+        active: f.elements.active.checked, mg: Number(f.elements.mg.value),
+        dailyMax: num(f, 'dailyMax', state.nrt.dailyMax), packPrice: num(f, 'packPrice', state.nrt.packPrice),
+        packCount: Math.round(num(f, 'packCount', state.nrt.packCount)),
+      });
+      persist();
+      closeSheet();
+      renderAll();
+      toast('انحفظت إعدادات العلكة');
+    });
+    refresh();
+  });
+}
+
 // ---------------------------------------------------------------- health
 function renderHealth() {
   const list = S.milestonesFor(state);
@@ -914,7 +989,9 @@ function openSheet(html, mount) {
     if (ev.shiftKey && document.activeElement === items[0]) { ev.preventDefault(); items.at(-1)?.focus(); }
     else if (!ev.shiftKey && document.activeElement === items.at(-1)) { ev.preventDefault(); items[0]?.focus(); }
   };
-  setTimeout(() => sheet.querySelector('input, button:not(.danger), select')?.focus({ preventScroll: true }), 60);
+  // on a phone, focusing a field opens the keyboard over the sheet; focus the sheet itself there
+  const touch = matchMedia('(pointer: coarse)').matches;
+  setTimeout(() => (touch ? sheet : sheet.querySelector('input, button:not(.danger), select'))?.focus({ preventScroll: true }), 60);
 }
 
 function closeSheet() {
@@ -1071,15 +1148,7 @@ function openSettings() {
         </div>
       </fieldset>
       <fieldset class="fs"><legend>علكة النيكوتين</legend>
-        <div class="toggles"><label><input type="checkbox" name="h_nrt" ${s.nrt.active ? 'checked' : ''}><span>بستعمل علكة</span></label></div>
-        <div class="habit-fields" data-h="nrt" ${s.nrt.active ? '' : 'data-off'}>
-          <div class="row2">
-            <label class="field">التركيز<select name="nrt_mg"><option value="2" ${s.nrt.mg == 2 ? 'selected' : ''}>2 ملغ</option><option value="4" ${s.nrt.mg == 4 ? 'selected' : ''}>4 ملغ</option></select></label>
-            ${field('الحد اليومي (من العلبة)', 'nrt_dailyMax', s.nrt.dailyMax, 1)}
-          </div>
-          <div class="row2">${field('سعر العلبة (د.أ)', 'nrt_packPrice', s.nrt.packPrice, 0.25)}${field('كم حبة بالعلبة', 'nrt_packCount', s.nrt.packCount, 1)}</div>
-          <button type="button" class="btn btn-soft" id="newPack">اشتريت علبة جديدة</button>
-        </div>
+        <button type="button" class="btn btn-soft" id="openGum">إعدادات العلكة</button>
       </fieldset>
       <div class="sheet-actions">
         <button class="btn btn-red" type="submit">احفظ</button>
@@ -1095,12 +1164,7 @@ function openSettings() {
       if (m) sheet.querySelector(`[data-h="${m[1]}"]`)?.toggleAttribute('data-off', !ev.target.checked);
       if (ev.target.name === 'vape_kind') sheet.querySelector('[data-puffs]').hidden = ev.target.value !== 'disposable';
     });
-    $('#newPack', sheet).onclick = () => {
-      state.nrt.packs.push(Date.now());
-      persist();
-      renderNRT();
-      toast(`انضافت علبة. صار عندك ${S.gumStock(state)} حبة`);
-    };
+    $('#openGum', sheet).onclick = () => openGum();
     $('#retake', sheet).onclick = () => { closeSheet(); setTimeout(() => intake(state), 350); };
     const reset = $('#resetAll', sheet);
     if (reset) reset.onclick = () => {
@@ -1135,11 +1199,6 @@ function openSettings() {
       });
       Object.assign(state.habits.argileh, {
         perWeek: num(f, 'argileh_perWeek', h.argileh.perWeek), price: num(f, 'argileh_price', h.argileh.price),
-      });
-      Object.assign(state.nrt, {
-        active: f.elements.h_nrt.checked, mg: Number(f.elements.nrt_mg.value),
-        dailyMax: num(f, 'nrt_dailyMax', s.nrt.dailyMax), packPrice: num(f, 'nrt_packPrice', s.nrt.packPrice),
-        packCount: num(f, 'nrt_packCount', s.nrt.packCount),
       });
       persist();
       closeSheet();
@@ -1199,14 +1258,14 @@ function openSlip() {
     r.onclick = () => {
       if (!r.dataset.armed) {
         r.dataset.armed = '1';
-        r.textContent = 'متأكد؟ العدّاد رح يبلّش من هلأ';
+        r.textContent = 'متأكد؟ العدّاد والتوفير والإيداعات رح يرجعوا صفر';
         return;
       }
       S.restartJourney(state);
       persist();
       closeSheet();
       renderAll();
-      toast('بلّشنا من جديد. أول دقيقة هي أهم دقيقة.');
+      toast('بلّشنا من الصفر. أول دقيقة هي أهم دقيقة.');
     };
   });
 }
@@ -1648,7 +1707,7 @@ function start() {
     b.innerHTML = label;
   };
   $('#gumBtn').onclick = (ev) => logGum(ev.currentTarget);
-  $('#todaySettings').onclick = openSettings;
+  $('#todaySettings').onclick = openGum;
   $('#savingsDate').onclick = openSettings;
   $('#homeGumLog').onclick = (ev) => logGum(ev.currentTarget);
   $('#homePatchLog').onclick = logPatch;

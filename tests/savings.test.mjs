@@ -21,15 +21,15 @@ test('money parsing accepts Arabic digits without floating-point rounding or par
   for (const input of ['', '0', '-1', '1.234', '1e3', 'Infinity', '2abc', '1,000.00', '1000000']) assert.equal(S.parseMoneyCents(input), null);
 });
 
-test('over-deposit is shown as credit, not negative debt; records survive restarts', () => {
+test('over-deposit is shown as credit, not negative debt; a restart starts the money from zero', () => {
   const s = journey();
   S.addDeposit(s, { cents: 1000, at: now }, now);
   assert.equal(S.savings(s, now).dueCents, 0);
   assert.equal(S.savings(s, now).aheadCents, 165);
   S.restartJourney(s, now);
   assert.equal(S.elapsed(s, now), 0);
-  assert.deepEqual(S.savings(s, now), { earnedCents: 835, depositedCents: 1000, dueCents: 0, aheadCents: 165 });
-  assert.equal(S.savings(s, now + S.DAY).earnedCents, 1120);
+  assert.deepEqual(S.savings(s, now), { earnedCents: 0, depositedCents: 0, dueCents: 0, aheadCents: 0 });
+  assert.equal(S.savings(s, now + S.DAY).earnedCents, 285);
 });
 
 test('two devices merge same-millisecond deposits by id and keep deletions', () => {

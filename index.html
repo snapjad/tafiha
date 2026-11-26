@@ -125,6 +125,19 @@
             </div>
           </section>
 
+          <section class="today" id="todayCard" aria-labelledby="todayTitle">
+            <div class="card-head"><h2 class="card-title" id="todayTitle">بدائلي اليوم</h2><span class="spacer"></span><button class="icon-btn" id="todaySettings" aria-label="إعدادات العلكة" title="إعدادات العلكة"><svg class="ico" aria-hidden="true"><use href="#i-sliders"/></svg></button></div>
+            <p class="card-sub" id="todayNotice"></p>
+            <div class="replacement" id="homeGum" hidden>
+              <div class="replacement-head"><img class="today-ico" src="assets/icons/gum.webp" alt="" width="400" height="400"><div><h3>علكة النيكوتين <small id="homeGumMg"></small></h3><p id="homeGumUsage"></p><p id="homeGumStock"></p></div></div>
+              <div class="replacement-actions"><button class="btn btn-ink" id="homeGumLog"><svg class="ico" aria-hidden="true"><use href="#i-plus"/></svg>سجّل حبة</button><button class="btn btn-soft" id="homeGumPack">اشتريت علبة</button><button class="btn btn-line" id="homeGumHow">كيف أستخدمها؟</button></div>
+            </div>
+            <div class="replacement" id="homePatch" hidden>
+              <div class="replacement-head"><img class="today-ico" src="assets/icons/patch.webp" alt="" width="400" height="400"><div><h3>لزقة النيكوتين</h3><p id="homePatchUsage"></p><p id="homePatchStock"></p></div></div>
+              <div class="replacement-actions"><button class="btn btn-ink" id="homePatchLog">سجّل لزقة</button><button class="btn btn-soft" id="homePatchPack">اشتريت علبة</button><button class="btn btn-line" id="homePatchHow">كيف أستخدمها؟</button></div>
+            </div>
+          </section>
+
           <section id="planReview" class="plan-review" aria-labelledby="planReviewTitle" hidden>
             <h2 id="planReviewTitle" class="card-title">راجع موعد الإقلاع</h2>
             <p id="planReviewReason"></p>
@@ -209,18 +222,6 @@
             <button class="btn btn-red btn-block" id="depositAdd"><svg class="ico" aria-hidden="true"><use href="#i-plus"/></svg>سجّل إيداع</button>
           </section>
 
-          <section class="today" id="todayCard" aria-labelledby="todayTitle">
-            <div class="card-head"><h2 class="card-title" id="todayTitle">بدائلي اليوم</h2><span class="spacer"></span><button class="icon-btn" id="todaySettings" aria-label="إعدادات البدائل" title="إعدادات البدائل"><svg class="ico" aria-hidden="true"><use href="#i-sliders"/></svg></button></div>
-            <p class="card-sub" id="todayNotice"></p>
-            <div class="replacement" id="homeGum" hidden>
-              <div class="replacement-head"><img class="today-ico" src="assets/icons/gum.webp" alt="" width="400" height="400"><div><h3>علكة النيكوتين <small id="homeGumMg"></small></h3><p id="homeGumUsage"></p><p id="homeGumStock"></p></div></div>
-              <div class="replacement-actions"><button class="btn btn-ink" id="homeGumLog"><svg class="ico" aria-hidden="true"><use href="#i-plus"/></svg>سجّل حبة</button><button class="btn btn-soft" id="homeGumPack">اشتريت علبة</button><button class="btn btn-line" id="homeGumHow">كيف أستخدمها؟</button></div>
-            </div>
-            <div class="replacement" id="homePatch" hidden>
-              <div class="replacement-head"><img class="today-ico" src="assets/icons/patch.webp" alt="" width="400" height="400"><div><h3>لزقة النيكوتين</h3><p id="homePatchUsage"></p><p id="homePatchStock"></p></div></div>
-              <div class="replacement-actions"><button class="btn btn-ink" id="homePatchLog">سجّل لزقة</button><button class="btn btn-soft" id="homePatchPack">اشتريت علبة</button><button class="btn btn-line" id="homePatchHow">كيف أستخدمها؟</button></div>
-            </div>
-          </section>
         </div>
       </div>
 
@@ -438,7 +439,7 @@
   </div>
 
   <div class="backdrop" id="backdrop" hidden></div>
-  <div class="sheet" id="sheet" role="dialog" aria-modal="true" hidden></div>
+  <div class="sheet" id="sheet" role="dialog" aria-modal="true" tabindex="-1" hidden></div>
   <div class="toast" id="toast" role="status"><span id="toastMsg"></span><button id="toastAct" hidden></button></div>
 
   <script type="module" src="js/app.js"></script>
