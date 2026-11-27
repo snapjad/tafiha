@@ -1,6 +1,7 @@
 // طفّيها — admin sections. Staff see totals and account details, never a person's health answers.
 import { esc, fmtDate, fmtNum, count as plural, ago, ROLE, errorText, confirmDialog, toast } from './util.js';
 import { content } from './content.js';
+import { office } from './office.js';
 
 async function call(ctx, name, args = {}) {
   const { data, error } = await ctx.sb.rpc(name, args);
@@ -283,7 +284,7 @@ async function settings(el, ctx) {
 const ACTION = {
   'user.ban': 'وقّف حساب', 'user.unban': 'رجّع حساب', 'user.delete': 'حذف حساب',
   'staff.set': 'عدّل الفريق', 'staff.remove': 'شال حدا من الفريق', 'config.set': 'غيّر إعداد',
-  'content.save': 'حفظ محتوى', 'content.delete': 'حذف محتوى',
+  'content.save': 'حفظ محتوى', 'content.delete': 'حذف محتوى', 'office.answer': 'جاوب قرار بالشركة',
 };
 
 async function audit(el, ctx) {
@@ -310,6 +311,7 @@ const soon = (title, text) => async (el) => {
 
 export const SECTIONS = [
   { id: 'stats', label: 'الأرقام', roles: ['owner'], render: stats },
+  { id: 'office', label: 'الشركة', roles: ['owner'], render: office },
   { id: 'users', label: 'الحسابات', roles: ['owner'], render: users },
   { id: 'consult', label: 'اسأل دكتور', roles: ['owner', 'doctor'], render: soon('اسأل دكتور', 'طلبات الاستشارة بتبيّن هون لما نخلّص الخدمة.') },
   { id: 'content', label: 'المحتوى', roles: ['owner', 'editor'], render: content },
