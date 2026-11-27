@@ -744,7 +744,7 @@ function openGum() {
         </fieldset>
         <fieldset class="fs"><legend>العلكة اللي بتستعملها</legend>
           <div class="row2"><label class="field">التركيز<select name="mg">${opt(2)}${opt(4)}</select></label>${field('الحد اليومي (من العلبة)', 'dailyMax', n.dailyMax, 1)}</div>
-          <div class="row2">${field('سعر العلبة (د.أ)', 'packPrice', n.packPrice, 0.25)}${field('كم حبة بالعلبة', 'packCount', n.packCount, 1)}</div>
+          <div class="row2">${field('سعر العلبة (د.أ، صفر إذا ببلاش)', 'packPrice', n.packPrice, 0.25)}${field('كم حبة بالعلبة', 'packCount', n.packCount, 1)}</div>
         </fieldset>
       </div>
       <div class="sheet-actions">
@@ -783,7 +783,7 @@ function openGum() {
       ev.preventDefault();
       Object.assign(n, {
         active: f.elements.active.checked, mg: Number(f.elements.mg.value),
-        dailyMax: num(f, 'dailyMax', state.nrt.dailyMax), packPrice: num(f, 'packPrice', state.nrt.packPrice),
+        dailyMax: num(f, 'dailyMax', state.nrt.dailyMax), packPrice: price(f, 'packPrice', state.nrt.packPrice),
         packCount: Math.round(num(f, 'packCount', state.nrt.packCount)),
       });
       persist();
@@ -1016,6 +1016,12 @@ function toLocalInput(t) {
 function num(form, name, fallback) {
   const v = parseFloat(form.elements[name]?.value);
   return Number.isFinite(v) && v > 0 ? v : fallback;
+}
+
+// a price can be zero (gum given free by a quit-smoking clinic)
+function price(form, name, fallback) {
+  const v = parseFloat(form.elements[name]?.value);
+  return Number.isFinite(v) && v >= 0 ? v : fallback;
 }
 
 // ---------------------------------------------------------------- reminders (the phone app)

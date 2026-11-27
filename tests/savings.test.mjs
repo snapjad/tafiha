@@ -63,3 +63,10 @@ test('legacy journeys start with no deposits and malformed records fail validati
   s.deposits.push(s.deposits[0]);
   assert.throws(() => assertState(s));
 });
+
+test('free gum (price zero) gives the gum money back to the savings', () => {
+  const s = journey();
+  assert.equal(S.savings(s, now).earnedCents, 835);
+  s.nrt.packPrice = 0;
+  assert.equal(S.savings(s, now).earnedCents, 855);
+});
