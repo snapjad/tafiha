@@ -170,38 +170,3 @@ textarea:focus-visible { outline: 3px solid rgba(225, 38, 28, .35); outline-offs
 .adm-toast.bad { background: var(--ember-deep); }
 @media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
 
-/* ---------------------------------------------------------------- الشركة (the AI team's office) */
-.adm-main h2 { font-size: 18px; margin: 28px 0 10px; }
-.adm-main h3 { font-family: var(--f-display); font-size: 15px; margin: 0 0 8px; }
-.adm-off-hot { color: var(--ember); }
-.adm-off-decs { display: grid; gap: 12px; grid-template-columns: repeat(auto-fill, minmax(min(100%, 320px), 1fr)); }
-.adm-off-dec { display: grid; gap: 8px; border-top: 3px solid var(--ember); }
-.adm-off-dec .adm-sub { margin: 0; }
-.adm-off-tag { font-size: 13px; color: var(--filter-deep); font-weight: 500; }
-.adm-off-opts { display: flex; flex-wrap: wrap; gap: 6px; }
-.adm-off-done { margin: 0; color: var(--ok); font-weight: 500; }
-.adm-off-split { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; font-size: 14px; }
-.adm-off-split div { background: var(--bg); border-radius: var(--r-sm); padding: 8px 10px; }
-.adm-off-split b { display: block; font-family: var(--f-display); font-size: 13px; }
-.adm-off-hist summary { cursor: pointer; color: var(--smoke); }
-.adm-off-depts { display: grid; gap: 12px; grid-template-columns: repeat(auto-fill, minmax(min(100%, 300px), 1fr)); }
-.adm-off-emp { display: flex; justify-content: space-between; gap: 10px; padding: 8px 0; border-top: 1px solid var(--line); }
-.adm-off-emp small { color: var(--smoke); }
-.adm-off-st { display: grid; justify-items: end; text-align: end; gap: 2px; max-width: 55%; }
-.adm-off-mode { font-size: 11px; border: 1px solid var(--line); border-radius: 6px; padding: 0 6px; color: var(--smoke); }
-.adm-off-mode.on { background: var(--ember); border-color: var(--ember); color: #fff; }
-.adm-off-pill { display: inline-block; font-size: 12px; font-weight: 500; border-radius: 99px; padding: 1px 10px; border: 1px solid currentColor; white-space: nowrap; }
-.adm-off-working, .adm-off-in_progress { color: #2f5e9a; }
-.adm-off-waiting_info { color: var(--filter-deep); }
-.adm-off-waiting_you { color: var(--ember-deep); }
-.adm-off-done, .adm-off-available { color: var(--ok); }
-.adm-off-row { display: grid; grid-template-columns: minmax(0, 1fr) auto auto auto; gap: 10px; align-items: baseline; padding: 8px 0; border-top: 1px solid var(--line); font-size: 14px; }
-.adm-off-row:first-child { border-top: 0; }
-.adm-off-row small { color: var(--smoke); white-space: nowrap; }
-.adm-off-feed .adm-off-row, .adm-off-hist .adm-off-row { grid-template-columns: auto minmax(0, 1fr) auto; }
-.adm-off-warn { color: var(--filter-deep); }
-.adm-off-cols { display: grid; gap: 12px; grid-template-columns: repeat(3, minmax(0, 1fr)); }
-.adm-off-reel { padding: 8px 0; border-top: 1px solid var(--line); }
-.adm-off-reel small { color: var(--filter-deep); margin-inline-start: 6px; }
-.adm-off-reel p { margin: 2px 0 0; font-size: 13px; color: var(--smoke); }
-@media (max-width: 760px) { .adm-off-cols { grid-template-columns: 1fr; } .adm-off-row { grid-template-columns: 1fr auto; } .adm-off-split { grid-template-columns: 1fr; } }
